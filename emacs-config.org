@@ -1,0 +1,1139 @@
+* About this document
+
+This document generates a very opinionated but fairly general Emacs config, optimal for
+Lisp development and absolutely brutal for Clojurians looking for productivity.
+
+Be aware that not all code-blocks have the :tangle: keyword and thus will not be merged
+into the final .emacs config, which you can generate by tangling: C-c C-v C-f
+
+*A word of caution: Tangling will overwrite your existing .emacs*
+
+The first time this is run on a system with an empty ~/.emacs.d/elpa folder, it will take
+a while to download and compile all dependencies.
+
+* Prerequisites
+
+Jinx requires libenchant and some language packs. d2 requires a renderer.
+
+#+begin_src bash
+  sudo pacman -S enchant pkgconf aspell-da aspell-en
+  sudo yay iosevka d2
+  # d2 mode alternative
+  # curl -fsSL https://d2lang.com/install.sh | sh -s --
+#+end_src
+
+Almost everything in this config is downloaded and installed on it's first run
+thanks to use-package. Exception may occur and they are remedied by running this:
+
+#+begin_src bash
+cd ~/.emacs.d
+git clone https://github.com/rougier/svg-tag-mode
+git clone https://github.com/rougier/nano-emacs.git
+#+end_src
+
+* Debugging
+
+If you're troubleshooting an infinite-loop type bug, this allows you you to send an interrupt signal and view the stacktrace.
+
+#+begin_src elisp
+(toggle-debug-on-quit)
+#+end_src
+
+#+begin_src shell
+  $ kill -USR1 pid
+#+end_src
+
+Make sure Emacs can access Elpa and our manually added resources and tools
+
+* Startup
+
+TODO: Change to your local home folder, /Users for non-nix users
+
+#+begin_src elisp :tangle ~/.emacs
+(add-to-list 'load-path "/home/lau/.emacs.d/elpa/")
+(add-to-list 'load-path "/home/lau/.emacs.d/nano-emacs/")
+(add-to-list 'exec-path "/home/lau/bin/")
+#+end_src
+
+For the fastest possible start-up (this was relevant 15 years ago)  Emacs can compile all .el files when quitting and simply load these on start-up. This is much faster than evaluating .el files but if you manually patch something in these .el files, those changes will not always be picked up, which is why I disabled this.
+
+#+begin_src elisp
+(defconst dot-emacs (concat (getenv "HOME") "/" ".emacs.lau.el")
+    "My dot emacs file")
+
+(require 'bytecomp)
+(setq compiled-dot-emacs (byte-compile-dest-file dot-emacs))
+
+(if (or (not (file-exists-p compiled-dot-emacs))
+	(file-newer-than-file-p dot-emacs compiled-dot-emacs)
+        (equal (nth 4 (file-attributes dot-emacs)) (list 0 0)))
+    (load dot-emacs)
+  (load compiled-dot-emacs))
+
+(add-hook 'kill-emacs-hook
+          '(lambda () (and (file-newer-than-file-p dot-emacs compiled-dot-emacs)
+                           (byte-compile-file dot-emacs))))
+#+end_src
+
+* DONE Globals
+
+All the special folders and files are referenced here:
+
+#+begin_src elisp :tangle ~/.emacs
+(setq my-backup-folder "/home/lau/Documents/EmacsBackups")
+(setq my-exec-path     "/home/lau/bin")
+(setq my-roam-folder   "~/Documents/Roam")
+#+end_src
+
+I mostly browse to read Javadocs, so Eww makes sense:
+
+#+begin_src elisp :tangle ~/.emacs
+(setq browse-url-browser-function 'eww-browse-url)
+#+end_src
+
+In some versions of Emacs M-x erase-buffer is disabled by default, this enables it.
+
+We add ido to quickly navigate to files we've previously visisted in ~C-x f~ navigation
+
+#+begin_src elisp :tangle ~/.emacs
+  (put 'erase-buffer 'disabled nil)
+  (autoload 'ido "ido.el")
+#+end_src
+
+Typing 'yes' and 'no' gets tedious
+
+#+begin_src elisp :tangle ~/.emacs
+(setq use-short-answers t)
+#+end_src
+
+These are fairly self-explanatory defaults which make sure that we have
+uninterrupted view of our code.
+
+#+begin_src elisp :tangle ~/.emacs
+  (ido-mode 'both)  ; User ido mode for both buffers and files
+  (setq backup-directory-alist '(("." . "/home/lau/Documents/EmacsBackups")))
+  (setq x-select-enable-clipboard t) ; Integrate with X11s clipboard
+  (global-font-lock-mode 1) ;; Enable syntax highlighting when editing code.
+  (show-paren-mode 1) ; Highlight the matching paren
+  (tool-bar-mode -1)  ; Remove bloat
+  (menu-bar-mode -1)  ; --- || ---
+  (setq transient-mark-mode t) ; Highlight selected regions
+  (setq visible-bell t)        ; Flash program border on beep
+  (setq inhibit-startup-screen t) ; Dont load the about screen on load
+  (setq scroll-step 1)            ; Only scroll down 1 line at a time
+  (setq-default indent-tabs-mode nil) ; Dont indent with tabs
+  (column-number-mode t) ; Show cursors X + Y coordinates in modeline
+  (setq c-basic-offset 4) ; Indenting is 4 spaces
+  (set-language-environment "UTF-8");"Latin-1") ; Default would be utf8
+
+  (global-visual-line-mode t)
+
+  (setq scroll-step            1
+        scroll-conservatively  10000)
+
+  (pixel-scroll-precision-mode)
+
+  (setq auto-mode-alist
+        (append '(("/.lisp$" . lisp-mode)
+                  ("/.lsp$" . lisp-mode)
+                  ("/.cl$" . lisp-mode)
+                  ("//.java$" . java-mode)
+                  ("SConstruct$" . python-mode)
+                  ("/.py$" . python-mode)
+                  ("/.asd$" . lisp-mode)
+                  ("/.system$" . lisp-mode)
+                  ("//.org$" . org-mode)
+                  ("//.mbox$" . vm-mode)
+                  ("//.muse$" . muse-mode)
+                  ("//.htm$" . nxhtml-mumamo-mode)
+                  ("//.html$" . nxhtml-mumamo-mode)
+                  ("//.k8s$" . k8s-mode)
+                  ("//.d2" . d2-mode)
+                  ("//.clj$" . cider-mode))
+                auto-mode-alist))
+
+  (setenv "PATH" (concat (getenv "PATH") ":/usr/local/bin"))
+  (setq exec-path (append exec-path '("/usr/local/bin")))
+  (setq exec-path (add-to-list 'exec-path my-exec-path))
+
+  (setq tab-always-indent 'complete)
+
+  (setq large-file-warning-threshold 1000000000)
+#+end_src
+
+By default, emacs expects sentences to be followed be 2 spaces, an old (american) convention used on typewriters. 1 space is the norm today. This value is for example used by emacs when filling paragraphs.
+
+#+begin_src elisp :tangle ~/.emacs
+(setq sentence-end-double-space nil)
+#+end_src
+
+If you ever find yourself trapped on a Mac, you'll find these helpful
+
+#+begin_src elisp
+  (setq mac-command-modifier 'meta)
+  (setq mac-option-modifier nil)
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+#+end_src
+
+We want to use Firefox by default.
+
+TODO Change to your browser of choice
+
+#+begin_src elisp :tangle ~/.emacs
+  (setq browse-url-browser-function 'browse-url-generic
+        browse-url-generic-program "/usr/bin/firefox")
+#+end_src
+
+When saving a file, we want to trim empty newlines and trailing whitespace
+
+#+begin_src elisp :tangle ~/.emacs
+  (add-hook 'write-file-hooks 'delete-trailing-whitespace)
+#+end_src
+
+Keep a reasonable amount of backups. Better safe than sorry.
+
+#+begin_src elisp :tangle ~/.emacs
+  (setq
+   backup-by-copying   t      ; don't clobber symlinks
+   delete-old-versions t
+   kept-new-versions   6
+   kept-old-versions   2
+   version-control     t)
+
+#+end_src
+
+* Packages / ELPA
+
+Enable Straight Install - Allows for installation from Github repoes, like Nano
+
+#+begin_src elisp
+  (defvar bootstrap-version)
+  (let ((bootstrap-file
+         (expand-file-name
+          "straight/repos/straight.el/bootstrap.el"
+          (or (bound-and-true-p straight-base-dir)
+              user-emacs-directory)))
+        (bootstrap-version 7))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage))
+#+end_src
+
+This determines whether to make installed packages available when Emacs starts.
+If non-nil, packages are made available before reading the init
+file (but after reading the early init file).  This means that if
+you wish to set this variable, you must do so in the early init
+file. I think this causes some load-issues with Nano enabled.
+
+#+begin_src elisp
+(setq package-enable-at-startup nil)
+#+end_src
+
+This is fairly dirty as it can disable GPG checks. The only reason for doing this,
+is if your GPG keys are so outdated that you can't even install gnu-elpa-keyring--update.
+
+#+begin_src elisp :tangle ~/.emacs
+;(setq package-check-signature nil)
+
+(setq package-archives
+      '(("gnu" . "https://elpa.gnu.org/packages/")
+        ("melpa" . "https://melpa.org/packages/")))
+
+(package-initialize)
+
+(when (not (package-installed-p 'use-package))
+   (package-refresh-contents)
+   (package-install 'use-package))
+#+end_src
+
+These packages make Emacs beautiful, efficient and ready for Clojure and Javascript
+development, as well as add flows for Git.
+
+Their utility is as follows
+
+- Insightful modelines: unicode-fonts, nerd-icons, doom-modeline, mood-line
+- Spellchecking: jinx
+- Languages modes: k8s, clojure (cider)
+- Git: magit / forge (github)
+
+Ranger is used for fast file/folder navigation.
+
+ivy is used for more sane filtering when searching for things, ivy-posframe
+pops the results center screen.
+
+org-roam is used for managing multiple related (and unrelated) notes across
+nodes. Discover or create with ~C-c n f~
+
+#+begin_src elisp :tangle ~/.emacs
+  (use-package unicode-fonts       :ensure t)
+  (use-package nerd-icons          :ensure t)
+  (use-package doom-modeline       :ensure t)
+  (use-package jinx                :ensure t)
+  (use-package k8s-mode            :ensure t)
+  (use-package ejc-sql             :ensure t)
+  (use-package ivy                 :ensure t)
+  (use-package ivy-posframe        :ensure t :after ivy)
+  (use-package mood-line           :ensure t)
+  (use-package swiper              :ensure t)
+  (use-package yascroll            :ensure t)
+  (use-package auto-complete       :ensure t)
+  (use-package magit               :ensure t)
+  (use-package flycheck            :ensure t)
+  (use-package flycheck-clj-kondo  :ensure t)
+  (use-package indium              :ensure t)
+  (use-package d2-mode             :ensure t)
+  (use-package chatgpt-shell       :ensure t)
+  (use-package ranger              :ensure t)
+  (use-package subword             :ensure t)
+  (use-package idle-highlight-mode :ensure t)
+  (use-package pdf-tools           :ensure t)
+  (use-package svg-lib             :ensure t)
+  (use-package org-roam            :ensure t :after org)
+  (use-package org-autolist        :ensure t :after org)
+  (use-package forge               :ensure t :after magit)
+
+  ;; With configs
+
+  (use-package markdown-mode
+  :ensure t
+  :mode ("README\\.md\\'" . gfm-mode)
+  :init (setq markdown-command "multimarkdown"))
+
+  (use-package jinx
+    :hook (emacs-startup . global-jinx-mode)
+    :bind (("M-$" . jinx-correct)
+           ("C-M-$" . jinx-languages)))
+
+  (use-package clojure-mode-extra-font-locking
+  :ensure t)
+
+  (use-package clojure-mode
+    :ensure t
+    :mode (("\\.clj\\'" . clojure-mode)
+           ("\\.cljs\\'" . clojure-mode)
+           ("\\.cljd\\'" . clojure-mode)
+           ("\\.cljc\\'" . clojure-mode)
+           ("\\.edn\\'" . clojure-mode))
+    :init
+    (add-hook 'clojure-mode-hook #'subword-mode)
+    (add-hook 'clojure-mode-hook #'clojure-mode-extra-font-locking)
+    (add-hook 'clojure-mode-hook #'eldoc-mode)
+    (add-hook 'clojure-mode-hook #'lsp)
+    (add-hook 'clojure-mode-hook #'flycheck-mode)
+    (add-hook 'clojure-mode-hook #'idle-highlight-mode))
+
+  (use-package cider
+    :ensure t
+    :defer t
+    :diminish subword-mode
+    :config
+    (setq nrepl-log-messages t
+          cider-repl-display-in-current-window t
+          cider-repl-use-clojure-font-lock t
+          cider-prompt-save-file-on-load 'always-save
+          cider-font-lock-dynamically '(macro core function var)
+          nrepl-hide-special-buffers t
+          cider-overlays-use-font-lock t)
+    (cider-repl-toggle-pretty-printing))
+
+  (use-package lsp-mode
+    :init
+    (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
+          gc-cons-threshold (* 100 1024 1024)
+          read-process-output-max (* 1024 1024)
+          treemacs-space-between-root-nodes nil
+          company-minimum-prefix-length 1
+          lsp-idle-delay 0.800
+          lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
+                                          ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
+          cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
+          )
+    :config
+    (define-key lsp-mode-map (kbd "C-c C-u") lsp-command-map)
+    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+           (clojure-mode . lsp)
+           ;; if you want which-key integration
+           ;;(lsp-mode . lsp-enable-which-key-integration)
+           )
+    :commands lsp)
+
+  ;; optionally
+  (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
+  (use-package lsp-ivy      :ensure t :commands lsp-ivy-workspace-symbol)
+  (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
+
+  (use-package org-autolist
+    :after org
+    :hook (org-mode . org-autolist-mode))
+
+  (use-package org-roam
+    :ensure t
+    :init
+    (setq org-roam-v2-ack t)
+    (setq org-return-follows-link  t)
+    (setq org-roam-node-display-template
+          (concat "${title:*} "
+                  (propertize "${tags:10}" 'face 'org-tag)))
+    :custom
+    (org-roam-directory my-roam-folder)
+    (org-roam-completion-everywhere t)
+
+
+    :bind (("C-c n l" . org-roam-buffer-toggle)
+           ("C-c n f" . org-roam-node-find)
+           ("C-c n i" . org-roam-node-insert)
+           :map org-mode-map
+           ("M-RET"   . org-meta-return)
+           ("C-M-i"   . completion-at-point))
+    :config
+    (org-roam-setup))
+
+  (use-package org-fragtog
+    :ensure t
+    :after org
+    :hook (org-mode . org-fragtog-mode))
+
+  (use-package org-bullets
+  :ensure t
+  :after org
+  :hook (org-mode . org-bullets-mode))
+
+  (use-package org
+    :mode (("\\.org$" . org-mode))
+    :after org-fragtog
+    :ensure t
+    :init
+    (define-key org-mode-map (kbd "<M-return>") nil)
+    (global-unset-key        (kbd "<M-return>"))
+    (global-set-key          (kbd "<M-return>") 'org-meta-return)
+    :bind
+    (("M-RET"   . org-meta-return)))
+
+
+  (use-package timu-rouge-theme
+    :ensure t
+    :config
+    (load-theme 'timu-rouge t))
+
+                                          ;(require 'unicode-fonts)
+  (require 'nerd-icons)
+  (require 'doom-modeline)
+  (require 'package)
+  (require 'k8s-mode)
+#+end_src
+
+For completion we use company mode in the back and Corfu in the front
+
+#+begin_src elisp :tangle ~/.emacs
+(use-package company             :ensure t
+    :init
+    (setq company-minimum-prefix-length 1
+          company-idle-delay 0.8)) ;; default is 0.2
+
+(use-package corfu
+  :ensure t
+  :init
+  (global-corfu-mode))
+#+end_src
+
+* Visuals
+
+After have tried many fonts, Iosevka seems to be optimal for readability.
+It's available on Arch via ~yay ttf-iosevka~ and OSX via Brew.
+
+#+begin_src elisp :tangle ~/.emacs
+(set-frame-font "iosevka 15")
+#+end_src
+
+By default Emacs stops the cursor from blinking after 10 blinks, this
+keeps the lights on forever
+
+#+begin_src elisp :tangle ~/.emacs
+(setq blink-cursor-blinks 0)
+#+end_src
+
+The themes used in this file make ivy-posframe searching, especially
+between buffers, a bit hard to read. Maximum visibility
+
+#+begin_src elisp :tangle ~/.emacs
+(set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
+#+end_src
+
+ediff can be very intuitive to read if put side-by-side:
+
+#+begin_src elisp :tangle ~/.emacs
+(setq ediff-split-window-function 'split-window-horizontally
+      ediff-window-setup-function 'ediff-setup-windows-plain)
+#+end_src
+
+* SQL
+
+Enable EJC but not autocomplete, which seems to be more trouble than its worth
+
+#+begin_src elisp :tangle ~/.emacs
+(require 'ejc-sql)
+;(require 'ejc-autocomplete)
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            ;(auto-complete-mode t)
+            ;(setq ejc-set-column-width-limit nil)
+            (ejc-set-column-width-limit nil)
+            (ejc-ac-setup)))
+#+end_src
+
+EJC can't read .pgpass files, so this utility allows for constructing an ejc-connection
+from a .pgpass file. Be aware: *this is hardcoded to the current ejc-postgres version*
+
+#+begin_src elisp :tangle ~/.emacs
+  (defun read-file (file)
+    "Returns file as list of lines."
+    (with-temp-buffer
+      (insert-file-contents file)
+      (split-string (buffer-string) "\n" t)))
+
+  (defun pgpass-to-sql-connection (config)
+    "Returns a suitable list for sql-connection-alist from a pgpass file."
+    (let ((server (lambda (host port db user _pass)
+                    (list
+                     (concat db ":" user ":" port ":" host)
+                     (list 'sql-product ''postgres)
+                     (list 'sql-server host)
+                     (list 'sql-user user)
+                     (list 'sql-port (string-to-number port))
+                     (list 'sql-database db))))
+          (pgpass-line (lambda (line)
+                         (apply server (split-string line ":" t)))))
+      (mapcar pgpass-line config)))
+
+  (defun read-pgpass
+      ()
+    (let ((args (lambda (host port db user _pass _foo)
+                  (print host)
+                  (print port)
+                  (print db)
+                  (print (concat _pass ":" _foo))
+                  (ejc-create-connection
+                   "PGPassed"
+                   :classpath (concat "~/.m2/repository/org.postgresql/postgresql/42.6.0/"
+                                      "postgresql-42.6.0.jar")
+                   :subprotocol "postgresql"
+                   :subname     (concat "//" host ":" port "/" db)
+                   :user        user
+                   :password    (concat _pass ":" _foo)))))
+      (apply args (split-string (car (read-file "~/.pgpass")) ":" t))))
+#+end_src
+
+Specific clients/connections used frequently can be added here
+
+#+begin_src elisp :tangle ~/.emacs
+  (defun pgpass-conn
+      ()
+    (interactive)
+    (read-pgpass)
+    (ejc-connect "PGPassed"))
+
+  (defun pg-local
+      ()
+    (interactive)
+    (ejc-create-connection
+     "PostgreSQL-db-connection"
+     :classpath (concat "~/.m2/repository/org.postgresql/postgresql/42.6.0/"
+                        "postgresql-42.6.0.jar")
+     :subprotocol "postgresql"
+     :subname "//localhost:5432/postgres"
+     :user "postgres"
+     :password "postgres")
+    (ejc-connect "PostgreSQL-db-connection"))
+#+end_src
+
+* ORG MODE
+
+org-mode is quicker to navigate with speed-keys enable, ie. hit "n" at the start of a header to go next. Checkout ~org-speed-command-help~ for details.
+
+#+begin_src elisp :tangle ~/.emacs
+(setq org-use-speed-commands t)
+#+end_src
+
+org source blocks can compile directly if they are added to babel.
+
+#+begin_src elisp :tangle ~/.emacs
+  (setq org-startup-indented t)
+
+  (use-package ob-d2 :ensure t :after d2-mode)
+
+  (require 'ob-d2)
+
+  (setq d2-location "~/.local/bin/d2")
+  (setq d2-output-format ".png") ;; Emacs sometimes chokes on svg
+
+  (org-babel-do-load-languages
+      'org-babel-load-languages
+      '((d2 . t)
+        (scheme . t)))
+
+  (setq org-confirm-babel-evaluate nil)
+  (add-to-list 'image-types 'svg)
+  #+end_src
+
+org has an annoying bug where opening a code-block of type bash will kill your
+cursor permanently, this is a workaround:
+
+#+begin_src elisp :tangle ~/.emacs
+  (setq org-src-tab-acts-natively nil)
+#+end_src
+
+org has its own opinions on fonts and font-sizes. This attempts to streamline and
+better format text blocks
+
+#+begin_src elisp :tangle ~/.emacs
+  (let* ((variable-tuple (cond ((x-list-fonts "iosevka 15") '(:font "iosevka 15"))
+                               (nil (warn "Cannot find a Sans Serif Font.  Install Source Sans Pro."))))
+         (base-font-color     (face-foreground 'default nil 'white))
+         (headline           `(:inherit default :weight bold )))
+    (custom-theme-set-faces 'user
+                            `(org-level-8 ((t (,@headline ,@variable-tuple))))
+                            `(org-level-7 ((t (,@headline ,@variable-tuple))))
+                            `(org-level-6 ((t (,@headline ,@variable-tuple))))
+                            `(org-level-5 ((t (,@headline ,@variable-tuple))))
+                            `(org-level-4 ((t (,@headline ,@variable-tuple :height 1.0))))
+                            `(org-level-3 ((t (,@headline ,@variable-tuple :height 1.05))))
+                            `(org-level-2 ((t (,@headline ,@variable-tuple :height 1.08))))
+                            `(org-level-1 ((t (,@headline ,@variable-tuple :height 1.10))))
+                            `(org-document-title ((t (,@headline ,@variable-tuple
+                                                                 :height 1.15
+                                                                 :underline nil))))))
+
+  (setq org-hide-emphasis-markers t)
+  #+end_src
+
+  This is a cheap alternative to org-bullets, which simply replaces - and * with •
+  wherever a line starts with either. Unused.
+
+#+begin_src elisp
+  (font-lock-add-keywords 'org-mode
+                          '(("^ +\\([-*]\\) "
+                             (0 (prog1 ()
+                                  (compose-region (match-beginning 1)
+                                                  (match-end 1)
+                                                  "•"))))))
+
+  (global-set-key "\C-ca" 'org-agenda)
+#+end_src
+
+* Helper functions
+
+These functions are fairly self-explanatory
+
+#+begin_src elisp :tangle ~/.emacs
+  (defvar find-file-root-prefix "/sudo:root@localhost:"
+    "The prefix of root user use in Emacs.")
+
+  (defun find-file-root (file)
+    "Find file with root."
+    (interactive "Find file as sudo: ")
+    (find-file (concat find-file-root-prefix file)))
+
+  (defun find-file-smb(file)
+    "Access file through samba protocol."
+    (interactive "fFind file as samba: ")
+    (find-file (concat "/smb:" file)))
+
+  (defun remove-dos-eol ()
+    "Do not show ^M in files containing mixed UNIX and DOS line endings."
+    (interactive)
+    (setq buffer-display-table (make-display-table))
+    (aset buffer-display-table ?\^M []))
+
+  (defun get-string-from-file (filePath)
+    "Return filePath's file content."
+    (with-temp-buffer
+      (insert-file-contents filePath)
+      (buffer-string)))
+
+  (defun revert-all-buffers ()
+    "Refresh all open file buffers without confirmation.
+      Buffers in modified (not yet saved) state in emacs will not be reverted. They
+      will be reverted though if they were modified outside emacs.
+      Buffers visiting files which do not exist any more or are no longer readable
+      will be killed."
+    (interactive)
+    (dolist (buf (buffer-list))
+      (let ((filename (buffer-file-name buf)))
+        ;; Revert only buffers containing files, which are not modified;
+        ;; do not try to revert non-file buffers like *Messages*.
+        (when (and filename
+                   (not (buffer-modified-p buf)))
+          (if (file-readable-p filename)
+              ;; If the file exists and is readable, revert the buffer.
+              (with-current-buffer buf
+                (revert-buffer :ignore-auto :noconfirm :preserve-modes))
+            ;; Otherwise, kill the buffer.
+            (let (kill-buffer-query-functions) ; No query done when killing buffer
+              (kill-buffer buf)
+              (message "Killed non-existing/unreadable file buffer: %s" filename))))))
+    (message "Finished reverting buffers containing unmodified files."))
+
+  (defun rightmost-as ()
+    (interactive)
+    (let ((start  (region-beginning))
+          (end    (region-end))
+          (max-col 0  ))
+      (print "walking")
+      (save-excursion
+        (goto-char start)
+        (while (< (point) end)
+          (goto-char (line-beginning-position))
+          (search-forward ":as")
+          (when (> (current-column) max-col)
+            (setq max-col (current-column)))
+          (forward-line 1)))
+      (message "max column %d" max-col)
+      max-col))
+
+  (defun align-as ()
+    (interactive)
+    (if (use-region-p)
+        (let ((start     (region-beginning))
+              (end       (region-end))
+              (rightmost (rightmost-as)))
+          (message "The region is active, and is from %d to %d, padding to %d"
+                   start end rightmost)
+          (save-excursion
+            (goto-char start)
+            (while (< (point) end)
+              (goto-char (line-beginning-position))
+              (search-forward ":as")
+              (backward-word)
+              (backward-char)
+              (when (< (current-column) rightmost)
+                (setq _iter (- rightmost (current-column) 3))
+                (while (> _iter 0)
+                  (insert " ")
+                  (setq _iter (- _iter 1))))
+              (forward-line 1))))
+      (message "nothing selected")))
+#+end_src
+
+The following is a helper for .dir-locals which imports everything
+from your AWS profile, SESSION_TOKEN, SECRET_KEY, all the trimmings
+so that you can access your AWS environment from your REPL.
+
+#+begin_src elisp :tangle ~/.emacs
+  (defun read-aws-creds (prefix profile)
+    (interactive "Mprofile-name: ")
+    (let ((on-profile-p nil))
+      (with-temp-buffer
+        (insert-file-contents "~/.aws/credentials")
+        (while (not (eobp))
+          (let ((line (buffer-substring (line-beginning-position)
+                                        (line-end-position))))
+            (when (and on-profile-p
+                       (equal nil (cl-search "[" line)))
+              (let* ((spl (split-string line " = "))
+                     (env (upcase (car spl)))
+                     (val (car (last spl))))
+                (setenv env val)
+                (message (concat env " :>> " val))))
+            (when (cl-search "[" line)
+              (if (cl-search (concat prefix "-" profile "]") line)
+                  (setq on-profile-p t)
+                (setq on-profile-p nil)))
+            (forward-line 1))))))
+#+end_src
+
+Sometimes you just need a pretty header comment, stolen from Kurt Heyrman
+
+#+begin_src elisp :tangle ~/.emacs
+(defun qrt/wrap-in-comment-header ()
+  "Takes the line at point, upcases it, and wraps it in a formatted
+comment (lisp style, ie. with ;;). Can for example be used to
+format a title for a section of code that is comming."
+  (interactive)
+  (let* ((title (buffer-substring-no-properties (line-beginning-position)
+                                                (line-end-position)))
+         (len (length title))
+         (beg)
+         (end))
+    (move-beginning-of-line 1)
+    (kill-line)
+    (insert "---" (make-string len ?-) "---\n")
+    (insert "-- " (upcase title)       " --\n")
+    (insert "---" (make-string len ?-) "---")
+    (forward-line -2)
+    (move-beginning-of-line nil)
+    (setq beg (point))
+    (forward-line 2)
+    (move-end-of-line nil)
+    (setq end (point))
+    (comment-region beg end)))
+
+(global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
+#+end_src
+
+The following is an aid for chatgpt-shell. If you've had a meaningful conversation,
+save it by running ~save-chat~
+
+TODO: Change Documents folder if needed
+
+#+begin_src elisp :tangle ~/.emacs
+  (defun find-first-nonexistent-filename (filename)
+    (let ((i 1))
+      (while (and (< i 101)
+                  (file-exists-p
+                   (concat "~/Documents/Chats/" filename (number-to-string i) ".org")))
+        (setq i (1+ i)))
+      (concat "~/Documents/Chats/" filename (number-to-string i) ".org")))
+
+  (defun save-chat (title)
+    (interactive "sTitle: ")
+    (let ((filename (find-first-nonexistent-filename title)))
+      (write-file filename)
+      (kill-buffer (current-buffer))))
+
+#+end_src
+
+* CIDER
+
+This seems to require .lein/profiles.clj to have nrepl middleware in a certain version.
+Currently cider tries to pull in nrepl 1.1.1 however lein pulls 1.0.0 causing pedantic
+projects to fail. The solution is to disable pedantic aborts or patch cider.el.
+
+In addition we wan't to supress nrepls own buffers.
+
+#+begin_src elisp :tangle ~/.emacs
+  (setq cider-inject-dependencies-at-jack-in t)
+
+  (setq nrepl-hide-special-buffers t)
+  (setq cider-show-error-buffer nil); 'only-in-repl)
+  (setq cider-auto-select-error-buffer nil)
+#+end_src
+
+Keep a history of what's done in the REPL between sessions:
+
+#+begin_src elisp :tangle ~/.emacs
+(setq cider-repl-history-file "~/.cider-repl-history")
+#+end_src
+
+Make sure the REPL is readable:
+
+#+begin_src elisp :tangle ~/.emacs
+(setq cider-repl-use-pretty-printing t)
+#+end_src
+
+Enable live code-checking
+
+#+begin_src elisp :tangle ~/.emacs
+    (setq flycheck-highlighting-mode 'sexps)
+#+end_src
+
+* Magit / Forge
+
+Magit just works, Forge requires the addition of 'Forge' which are
+Github/Gitlab instances and any auth info should be added to ~/.authinfo
+
+#+begin_src elisp :tangle ~/.emacs
+  (require 'forge)
+
+  (defun approve-pr
+      (pr-num)
+    (interactive "sPull request number:")
+    (if (= 0 (shell-command
+              (concat "gh pr review " pr-num " -a")))
+        (message "Approved")
+      (message "Failed")))
+
+  (add-hook 'forge-topic-mode
+            (lambda ()
+              (local-set-key (kbd "C-c C-y") 'approve-pr)))
+
+  (add-to-list 'forge-alist
+               (list "github.ccta.dk"
+                     "api.github.ccta.dk"
+                     "github.ccta.dk"
+                     forge-github-repository))
+#+end_src
+
+* LSP (Clojure)
+
+When a buffer is killed while `lsp-mode` is active, this hook modifies the global `post-command-hook` to remove certain closures, specifically those that are related to `lsp-mode` operations indicated by their environment variables (`cancel-callback`, `method`, `buf`, `hook`, `workspaces`, `id`). This might be used to clean up or reset state associated with `lsp-mode` in hooks that could interfere with or are no longer relevant after buffers are closed
+
+#+begin_src elisp :tangle ~/.emacs
+(add-hook 'kill-buffer-hook
+          (lambda ()
+            (when (bound-and-true-p lsp-mode)
+              (setq-default
+               post-command-hook
+               (--filter (not (and (consp it)
+                                   (eq (car it) 'closure)
+                                   (not (-difference
+                                         '(cancel-callback method buf hook workspaces id)
+                                         (-map #'car (cadr it))))))
+                         (default-value 'post-command-hook))))))
+  #+end_src
+
+Decide, d2 or mermaid?
+(setq d2-output-format ".png")
+(set-face-attribute 'default nil :height 140)
+
+* API Keys
+
+TODO: This is by convention to keep keys out of configs. If you want to hook into ChatGPT
+just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
+
+#+begin_src elisp :tangle ~/.emacs
+(defun find-api-key (filename search-string)
+  "Find the line following the first occurrence of SEARCH-STRING in FILENAME."
+  (if (file-exists-p filename)
+      (with-temp-buffer
+        ;; Insert the contents of the file into the temp buffer
+        (insert-file-contents filename)
+        ;; Search for the search string from the beginning
+        (goto-char (point-min))
+        (if (search-forward search-string nil t)
+            ;; Found the string, now move to the beginning of the next line
+            (let ((start (line-beginning-position 2))
+                  (end (line-end-position 2)))
+              (when (and start end)
+                ;; Extract the line and return it
+                (buffer-substring-no-properties start end)))
+          ;; If the search string was not found, return nil
+          nil))
+    ""))
+
+(setq chatgpt-shell-openai-key (find-api-key "~/.api-keys" "chatgpt"))
+(setq dall-e-shell-openai-key  (find-api-key "~/.api-keys" "chatgpt"))
+#+end_src
+
+* Ivy
+
+Setting up Ivy and Ivy-Postframe + Swiper for beautiful search and filtering
+of minibuffers
+
+#+begin_src elisp :tangle ~/.emacs
+  (require 'ivy)
+  (ivy-mode 1)
+  (setq ivy-use-virtual-buffers t)
+  (setq enable-recursive-minibuffers t)
+
+  (require 'ivy-posframe)
+
+  (setq ivy-posframe-display-functions-alist
+        '((swiper          . ivy-posframe-display-at-window-center)
+          (complete-symbol . ivy-posframe-display-at-window-center)
+          (counsel-M-x     . ivy-posframe-display-at-window-center)
+          (t               . ivy-posframe-display)))
+
+  (global-set-key (kbd "C-s") 'swiper)
+
+  (ivy-posframe-mode 1)
+
+
+
+#+end_src
+
+* Beautification
+
+We load the theme timu-rouge, which is superb. But we can make it even
+better by mixing with deeper-blue
+
+#+begin_src elisp :tangle ~/.emacs
+  (load-theme 'deeper-blue)
+#+end_src
+
+Emacs own scrollbars are bulky, this replaces them with ya-scrollbar
+
+#+begin_src elisp :tangle ~/.emacs
+  (scroll-bar-mode 0)
+  (global-yascroll-bar-mode 1)
+#+end_src
+
+svg-tag-mode is fetched from https://github.com/rougier/svg-tag-mode
+
+It allows for [33%] text to be rendered as an honest to god progress
+bar, svg generated. Its quite hot and comes from the author of Nano.
+
+#+begin_src elisp :tangle ~/.emacs
+    (require 'svg-tag-mode)
+
+    (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
+    (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
+    (defconst day-re "[A-Za-z]\\{3\\}")
+    (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
+
+    (defun svg-progress-percent (value)
+      (save-match-data
+       (svg-image (svg-lib-concat
+                   (svg-lib-progress-bar  (/ (string-to-number value) 100.0)
+                                     nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                   (svg-lib-tag (concat value "%")
+                                nil :stroke 0 :margin 0)) :ascent 'center)))
+
+    (defun svg-progress-count (value)
+      (save-match-data
+        (let* ((seq (split-string value "/"))
+               (count (if (stringp (car seq))
+                          (float (string-to-number (car seq)))
+                        0))
+               (total (if (stringp (cadr seq))
+                          (float (string-to-number (cadr seq)))
+                        1000)))
+          (svg-image (svg-lib-concat
+                      (svg-lib-progress-bar (/ count total) nil
+                                            :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                      (svg-lib-tag value nil
+                                   :stroke 0 :margin 0)) :ascent 'center))))
+
+    (setq svg-tag-tags
+          `(
+            ;; Org tags
+            (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
+            (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
+
+            ;; Task priority
+            ("\\[#[A-Z]\\]" . ( (lambda (tag)
+                                  (svg-tag-make tag :face 'org-priority
+                                                :beg 2 :end -1 :margin 0))))
+
+            ;; TODO / DONE
+            ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
+            ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
+
+
+            ;; Citation of the form [cite:@Knuth:1984]
+            ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
+                                              (svg-tag-make tag
+                                                            :inverse t
+                                                            :beg 7 :end -1
+                                                            :crop-right t))))
+            ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
+                                                    (svg-tag-make tag
+                                                                  :end -1
+                                                                  :crop-left t))))
+
+
+            ;; Active date (with or without day name, with or without time)
+            (,(format "\\(<%s>\\)" date-re) .
+             ((lambda (tag)
+                (svg-tag-make tag :beg 1 :end -1 :margin 0))))
+            (,(format "\\(<%s \\)%s>" date-re day-time-re) .
+             ((lambda (tag)
+                (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
+            (,(format "<%s \\(%s>\\)" date-re day-time-re) .
+             ((lambda (tag)
+                (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
+
+            ;; Inactive date  (with or without day name, with or without time)
+             (,(format "\\(\\[%s\\]\\)" date-re) .
+              ((lambda (tag)
+                 (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
+             (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
+              ((lambda (tag)
+                 (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
+             (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
+              ((lambda (tag)
+                 (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))
+
+            ;; ;; Progress
+            ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
+                                                (svg-progress-percent (substring tag 1 -2)))))
+            ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
+                                              (svg-progress-count (substring tag 1 -1)))))
+            ))
+
+  (add-hook 'org-mode-hook
+      (lambda ()
+        (org-next-visible-heading 1)
+        (svg-tag-mode 1)))
+#+end_src
+
+* Mode line
+
+A beautiful mode-line consists of many unicode icons and dampened colors
+
+#+begin_src elisp :tangle ~/.emacs
+  (doom-modeline-mode 1)
+  (add-hook 'after-init-hook #'doom-modeline-mode)
+  (setq mood-line-glyph-alist mood-line-glyphs-fira-code)
+  (set-face-attribute 'region nil :background "#666")
+
+  (set-face-background 'mode-line "#11131b")
+  (set-face-foreground 'mode-line "white")
+  (set-face-foreground 'mode-line-buffer-id "green")
+  (set-face-background 'mode-line-inactive "#1E1E1E")
+  (set-face-foreground 'mode-line-inactive "white")
+#+end_src
+
+
+* Note taking, PDF reader, Latex
+
+fragtog-mode can render beautiful latex inline by simply prefixing
+your latex statements with $ signs, so that
+
+\frac{\alpha}{2} = \sqrt[3]{x^2}
+
+is rendered as
+
+$\frac{\alpha}{2} = \sqrt[3]{x^2}$
+
+Symbols defined here:
+https://www.cmor-faculty.rice.edu/~heinken/latex/symbols.pdf
+
+#+begin_src elisp :tangle ~/.emacs
+(setq org-format-latex-options
+      '(:foreground default :background default
+        :scale 2.0
+        :html-scale 1.0
+        :matchers
+        ("begin" "$1" "$" "$$" "\\(" "\\[")))
+#+end_src
+
+And finally, on laptops and Qemus, you'll probably want this maximized:
+
+#+begin_src elisp
+(toggle-frame-maximized)
+#+end_src
+
+* Journaling
+
+If you want to keep a simple day-journal, this will make that happen
+
+#+begin_src elisp :tangle ~/.emacs
+(defconst journal-path "~/Documents/journal/")
+
+(defun get-today-filename ()
+  (concat journal-path (format-time-string "%d-%m-%Y") ".org"))
+
+(defun today-journal ()
+  "Open today's journal."
+  (interactive)
+  (let ((fname (get-today-filename)))
+    (find-file fname)))
+
+(keymap-global-set "C-x j" 'today-journal)
+#+end_src
+
+* Globals key bindings
+
+#+begin_src elisp :tangle ~/.emacs
+  (global-set-key (kbd "C-z") 'set-mark-command)
+  (global-set-key [C-tab] 'other-window)
+  (global-set-key (kbd "RET") 'newline-and-indent)
+  (global-set-key (kbd "C-æ æ") 'cider-repl-clear-buffer)
+
+  (global-set-key (kbd "C-M-p") 'enlarge-window-horizontally)
+  (global-set-key (kbd "C-M-o") 'shrink-window-horizontally)
+
+  (global-set-key (kbd "C-.") 'find-tag)
+
+  (global-set-key (kbd "C-x C-b") 'ibuffer)
+
+  (global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
+  (global-set-key (kbd "C-æ r") 'lsp-find-references)
+  (global-set-key (kbd "C-æ f") 'ranger)
+#+end_src
