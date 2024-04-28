@@ -937,6 +937,14 @@ of minibuffers
 
 #+end_src
 
+To add a bit more information to search-bars, we use Marginalia
+
+#+begin_src elisp :tangle ~/.emacs
+(use-package marginalia
+   :ensure t
+   :init (marginalia-mode))
+#+end_src
+
 * Beautification
 
 We load the theme timu-rouge, which is superb. But we can make it even
