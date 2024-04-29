@@ -264,9 +264,6 @@ Their utility is as follows
 
 Ranger is used for fast file/folder navigation.
 
-ivy is used for more sane filtering when searching for things, ivy-posframe
-pops the results center screen.
-
 org-roam is used for managing multiple related (and unrelated) notes across
 nodes. Discover or create with ~C-c n f~
 
@@ -277,8 +274,6 @@ nodes. Discover or create with ~C-c n f~
   (use-package jinx                :ensure t)
   (use-package k8s-mode            :ensure t)
   (use-package ejc-sql             :ensure t)
-  (use-package ivy                 :ensure t)
-  (use-package ivy-posframe        :ensure t :after ivy)
   (use-package mood-line           :ensure t)
   (use-package swiper              :ensure t)
   (use-package yascroll            :ensure t)
@@ -365,7 +360,7 @@ nodes. Discover or create with ~C-c n f~
 
   ;; optionally
   (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
-  (use-package lsp-ivy      :ensure t :commands lsp-ivy-workspace-symbol)
+  (use-package lsp-ivy      :ensure t :commands lsp-ivy-workspace-symbol :after ivy)
   (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
 
   (use-package org-autolist
@@ -456,13 +451,6 @@ keeps the lights on forever
 
 #+begin_src elisp :tangle ~/.emacs
 (setq blink-cursor-blinks 0)
-#+end_src
-
-The themes used in this file make ivy-posframe searching, especially
-between buffers, a bit hard to read. Maximum visibility
-
-#+begin_src elisp :tangle ~/.emacs
-(set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
 #+end_src
 
 ediff can be very intuitive to read if put side-by-side:
@@ -912,14 +900,22 @@ just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
 
 * Ivy
 
+ivy is used for more sane filtering when searching for things, ivy-posframe
+pops the results center screen.
+
 Setting up Ivy and Ivy-Postframe + Swiper for beautiful search and filtering
 of minibuffers
 
 #+begin_src elisp :tangle ~/.emacs
+
+  (use-package ivy                 :ensure t)
+  (use-package ivy-posframe        :ensure t :after ivy)
+
   (require 'ivy)
   (ivy-mode 1)
   (setq ivy-use-virtual-buffers t)
   (setq enable-recursive-minibuffers t)
+  (setq ivy-on-del-error-function #'ignore)
 
   (require 'ivy-posframe)
 
@@ -932,9 +928,13 @@ of minibuffers
   (global-set-key (kbd "C-s") 'swiper)
 
   (ivy-posframe-mode 1)
+#+end_src
 
+The themes used in this file make ivy-posframe searching, especially
+between buffers, a bit hard to read. Maximum visibility
 
-
+#+begin_src elisp :tangle ~/.emacs
+(set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
 #+end_src
 
 To add a bit more information to search-bars, we use Marginalia
