@@ -802,6 +802,12 @@ In addition we wan't to supress nrepls own buffers.
   (setq cider-auto-select-error-buffer nil)
 #+end_src
 
+Enable evaluation of comment blocks
+
+#+begin_src elisp :tangle ~/.emacs
+(setq clojure-toplevel-inside-comment-form t)
+#+end_src
+
 Keep a history of what's done in the REPL between sessions:
 
 #+begin_src elisp :tangle ~/.emacs
