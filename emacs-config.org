@@ -29,6 +29,10 @@ thanks to use-package. Exception may occur and they are remedied by running this
 cd ~/.emacs.d
 git clone https://github.com/rougier/svg-tag-mode
 git clone https://github.com/rougier/nano-emacs.git
+
+mkdir ~/Documents/Roam
+mkdir ~/Documents/TODOs
+touch ~/Documents/Opgaver.org
 #+end_src
 
 * Debugging
