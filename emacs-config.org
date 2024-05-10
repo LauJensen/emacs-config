@@ -630,6 +630,15 @@ better format text blocks
   (global-set-key "\C-ca" 'org-agenda)
 #+end_src
 
+Our daily prioritized tasks are all stored in the same file
+
+#+begin_src elisp :tangle ~/.emacs
+(setq org-agenda-files '("~/Documents/TODOs/Opgaver.org"))
+
+(setq org-todo-keywords
+      '((sequence "TODO" "BLOCKED" "HOLD" "|" "DONE" "CANCELLED")))
+#+end_src
+
 * Helper functions
 
 These functions are fairly self-explanatory
@@ -931,13 +940,20 @@ of minibuffers
 #+begin_src elisp :tangle ~/.emacs
 
   (use-package ivy                 :ensure t)
-  (use-package ivy-posframe        :ensure t :after ivy)
 
   (require 'ivy)
   (ivy-mode 1)
   (setq ivy-use-virtual-buffers t)
   (setq enable-recursive-minibuffers t)
   (setq ivy-on-del-error-function #'ignore)
+
+  (global-set-key (kbd "C-s") 'swiper)
+#+end_src
+
+Ivy-Posframe, currently disabled.
+
+#+begin_src elisp
+  (use-package ivy-posframe        :ensure t :after ivy)
 
   (require 'ivy-posframe)
 
@@ -946,10 +962,8 @@ of minibuffers
           (complete-symbol . ivy-posframe-display-at-window-center)
           (counsel-M-x     . ivy-posframe-display-at-window-center)
           (t               . ivy-posframe-display)))
-
-  (global-set-key (kbd "C-s") 'swiper)
-
   (ivy-posframe-mode 1)
+
 #+end_src
 
 The themes used in this file make ivy-posframe searching, especially
@@ -1032,6 +1046,9 @@ bar, svg generated. Its quite hot and comes from the author of Nano.
 
             ;; TODO / DONE
             ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
+            ("BLOCKED" . ((lambda (tag) (svg-tag-make "BLOCKED" :face 'ivy-current-match :margin 0))))
+            ("HOLD" . ((lambda (tag) (svg-tag-make "HOLD" :face 'abbrev-table-name :margin 0))))
+            ("CANCELLED" . ((lambda (tag) (svg-tag-make "CANCELLED" :face 'ivy-current-match :margin 0))))
             ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
 
 
