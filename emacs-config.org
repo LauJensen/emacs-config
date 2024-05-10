@@ -464,6 +464,18 @@ ediff can be very intuitive to read if put side-by-side:
       ediff-window-setup-function 'ediff-setup-windows-plain)
 #+end_src
 
+Avoid gaps when resizing
+
+#+begin_src elisp :tangle ~/.emacs
+(setq frame-resize-pixelwise t)
+#+end_src
+
+Highlight the currently active line
+
+#+begin_src elisp :tangle ~/.emacs
+(global-hl-line-mode 1)
+#+end_src
+
 * SQL
 
 Enable EJC but not autocomplete, which seems to be more trouble than its worth
