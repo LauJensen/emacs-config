@@ -1165,6 +1165,11 @@ If you want to keep a simple day-journal, this will make that happen
   (global-set-key (kbd "C-x C-b") 'ibuffer)
 
   (global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
-  (global-set-key (kbd "C-æ r") 'lsp-find-references)
   (global-set-key (kbd "C-æ f") 'ranger)
+  (global-set-key (kbd "C-æ g") 'rgrep)
+  (global-set-key (kbd "C-æ r") 'lsp-find-references)
+  (global-set-key (kbd "C-æ s") 'lsp-ui-find-workspace-symbol)
+  (global-set-key (kbd "C-æ t") 'org-todo-list)
+
+  (global-set-key (kbd "C-s-p") 'org-todo)
 #+end_src
