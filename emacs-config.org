@@ -17,7 +17,8 @@ Jinx requires libenchant and some language packs. d2 requires a renderer.
 
 #+begin_src bash
   sudo pacman -S enchant pkgconf aspell-da aspell-en
-  sudo yay iosevka d2
+  yay iosevka
+  yay d2
   # d2 mode alternative
   # curl -fsSL https://d2lang.com/install.sh | sh -s --
 #+end_src
@@ -28,7 +29,6 @@ thanks to use-package. Exception may occur and they are remedied by running this
 #+begin_src bash
 cd ~/.emacs.d
 git clone https://github.com/rougier/svg-tag-mode
-git clone https://github.com/rougier/nano-emacs.git
 
 mkdir ~/Documents/Roam
 mkdir ~/Documents/TODOs
@@ -55,7 +55,7 @@ TODO: Change to your local home folder, /Users for non-nix users
 
 #+begin_src elisp :tangle ~/.emacs
 (add-to-list 'load-path "/home/lau/.emacs.d/elpa/")
-(add-to-list 'load-path "/home/lau/.emacs.d/nano-emacs/")
+(add-to-list 'load-path "/home/lau/.emacs.d/svg-tag-mode/")
 (add-to-list 'exec-path "/home/lau/bin/")
 #+end_src
 
