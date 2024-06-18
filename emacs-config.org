@@ -448,6 +448,7 @@ It's available on Arch via ~yay ttf-iosevka~ and OSX via Brew.
 
 #+begin_src elisp :tangle ~/.emacs
 (set-frame-font "iosevka 15")
+(set-face-attribute 'default nil :weight 'light)
 #+end_src
 
 By default Emacs stops the cursor from blinking after 10 blinks, this
@@ -825,6 +826,7 @@ In addition we wan't to supress nrepls own buffers.
   (setq nrepl-hide-special-buffers t)
   (setq cider-show-error-buffer nil); 'only-in-repl)
   (setq cider-auto-select-error-buffer nil)
+  (setq cider-repl-display-help-banner nil)
 #+end_src
 
 Enable evaluation of comment blocks
@@ -1164,6 +1166,106 @@ If you want to keep a simple day-journal, this will make that happen
     (find-file fname)))
 
 (keymap-global-set "C-x j" 'today-journal)
+#+end_src
+
+* QRT Loot
+** SSH-agent
+#+begin_src elisp :tangle ~/.emacs
+(defconst qrt/ss8ch-agent-socket-var "SSH_AUTH_SOCK")
+(defconst qrt/ss8ch-agent-process-id "SSH_AGENT_PID")
+(defconst qrt/ss8ch-agent-search-end "; export")
+
+(defun qrt/ss8ch-find-var-value-in-agent-response
+    (var-name response)
+  "Takes a var-name and the response of calling `ssh-agent` in a
+   shell environment. Finds the value for the given var-name in
+   the given agent response."
+  (save-match-data
+    (if (string-match (concat var-name "=\\([^;]+\\)" qrt/ss8ch-agent-search-end)
+                      response)
+        (match-string 1 response))))
+
+(defun qrt/ss8ch-ensure-agent ()
+  "Checks if the environment contains the pid var for an ssh
+   agent. If not so, starts an ssh-agent process and captures its
+   output the configure the environment."
+  (when (not (getenv qrt/ss8ch-agent-process-id))
+    (let ((agent-response (shell-command-to-string "ssh-agent")))
+      (setenv qrt/ss8ch-agent-socket-var
+              (qrt/ss8ch-find-var-value-in-agent-response
+               qrt/ss8ch-agent-socket-var
+               agent-response))
+      (setenv qrt/ss8ch-agent-process-id
+              (qrt/ss8ch-find-var-value-in-agent-response
+               qrt/ss8ch-agent-process-id
+               agent-response)))
+    (message "ss8ch ~ agent started")))
+
+(defun qrt/ss8ch-handle-passphrase-request (process process-message)
+  "Helper function to handle passphrase requests from the ssh-add
+   process."
+  (save-match-data
+    (if (string-match "passphrase.*:\\s *\\'" process-message)
+        (process-send-string process
+                             (concat (read-passwd process-message) "\n"))
+      (if (not (string-match "^\n+$" process-message))
+          (message (concat "ss8ch ~ " (string-trim process-message)))))))
+
+(defun qrt/ss8ch-find-private-ssh-keys-in (directory)
+  "Returns a list of file paths under directory for private ssh
+   keys."
+  (remove nil (mapcar (lambda (file-name)
+                        (save-match-data
+                          (if (string-match "^\\([^.]+\\)\\.pub$" file-name)
+                              (concat directory (match-string 1 file-name)))))
+                      (directory-files directory))))
+
+(defun qrt/ss8ch-add (key-file)
+  "Checks if an agent is registered in the environment. If not
+   so, an agent is started and registered. Then runs ssh-add to
+   add a key to the running SSH agent, using the minibuffer to
+   ask for the keys passphrase."
+  (interactive
+   (list (completing-read "Select ssh key to add: "
+                          (qrt/ss8ch-find-private-ssh-keys-in "~/.ssh/"))))
+  (qrt/ss8ch-ensure-agent)
+  (let (process)
+    (unwind-protect
+        (progn
+          (setq process (start-process  "ssh-add" nil
+                                        "ssh-add" (expand-file-name key-file)))
+          (set-process-filter process 'qrt/ss8ch-handle-passphrase-request)
+          (while (accept-process-output process)))
+      (if (eq (process-status process) 'run)
+          (kill-process process)))))
+#+end_src
+
+** Window splitting
+
+Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't use the delete-windows command
+
+#+begin_src elisp :tangle ~/.emacs
+(defun qrt/split-window-to-other-buffer-below
+      ()
+    (interactive)
+    (delete-other-windows)
+    (split-window-below)
+    (other-window 1)
+    (let ((switch-to-prev-buffer-skip 'visible))
+      (switch-to-next-buffer)))
+
+  (global-set-key (kbd "C-æ 2") 'qrt/split-window-to-other-buffer-below)
+
+  (defun qrt/split-window-to-other-buffer-right
+      ()
+    (interactive)
+        (delete-other-windows)
+    (split-window-right)
+    (other-window 1)
+    (let ((switch-to-prev-buffer-skip 'visible))
+      (switch-to-next-buffer)))
+
+  (global-set-key (kbd "C-æ 3") 'qrt/split-window-to-other-buffer-right)
 #+end_src
 
 * Globals key bindings
