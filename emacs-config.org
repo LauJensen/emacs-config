@@ -477,6 +477,80 @@ Highlight the currently active line
 (global-hl-line-mode 1)
 #+end_src
 
+
+* Slides
+
+10/10 users choose org-tree-slide over Powerpoint, every time
+
+#+begin_src elisp :tangle ~/.emacs
+(use-package org-tree-slide :ensure t)
+
+(defun qrt/font-size (s)
+  (interactive (list (read-number "font size: " 100)))
+  (set-face-attribute 'default nil :height s))
+
+(defvar qrt/org-meta-line-hidden-p nil)
+(defun qrt/hide-org-meta-line ()
+  (interactive)
+  (setq qrt/org-meta-line-hidden-p t)
+  (set-face-attribute 'org-meta-line nil
+                      :foreground (face-attribute 'default :background)))
+
+(defun qrt/show-org-meta-line ()
+  (interactive)
+  (setq qrt/org-meta-line-hidden-p nil)
+  (set-face-attribute 'org-meta-line nil :foreground nil))
+
+(defun qrt/toggle-org-meta-line-visibility ()
+  (interactive)
+  (if qrt/org-meta-line-hidden-p
+      (qrt/show-org-meta-line)
+    (qrt/hide-org-meta-line)))
+
+(defvar qrt/orig-mode-line mode-line-format)
+
+(defun qrt/hide-mode-line ()
+  (setq-default mode-line-format nil))
+
+(defun qrt/show-mode-line ()
+  (setq-default mode-line-format qrt/orig-mode-line))
+
+(defun qrt/toggle-mode-line ()
+  (interactive)
+  (if mode-line-format
+      (qrt/hide-mode-line)
+    (qrt/show-mode-line)))
+
+(setq org-image-actual-width nil)
+(setq org-tree-slide-activate-message "slideshow started")
+
+(add-hook 'org-mode-hook
+          (lambda ()
+            (local-set-key (kbd "<f8>") 'org-tree-slide-mode)))
+
+(eval-after-load 'org-tree-slide
+  (lambda ()
+    (define-key org-tree-slide-mode-map (kbd "C-<right>") 'org-tree-slide-move-next-tree)
+    (define-key org-tree-slide-mode-map (kbd "C-<left>") 'org-tree-slide-move-previous-tree)))
+
+(defun qrt/init-org-tree-slide ()
+  (org-bullets-mode 1)
+  (org-toggle-inline-images 1)
+  (qrt/hide-mode-line)
+  (qrt/hide-org-meta-line)
+  (qrt/font-size 200))
+
+(defun qrt/finish-org-tree-slide ()
+  (org-bullets-mode 0)
+  (org-toggle-inline-images nil)
+  (qrt/show-mode-line)
+  (qrt/show-org-meta-line)
+  (qrt/font-size 150))
+
+(add-hook 'org-tree-slide-play-hook #'qrt/init-org-tree-slide)
+(add-hook 'org-tree-slide-stop-hook #'qrt/finish-org-tree-slide)
+#+end_src
+
 * SQL
 
 Enable EJC but not autocomplete, which seems to be more trouble than its worth
@@ -1291,4 +1365,11 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (global-set-key (kbd "C-æ t") 'org-todo-list)
 
   (global-set-key (kbd "C-s-p") 'org-todo)
+#+end_src
+
+Using 65% keyboards is a beautiful thing, but not without issues
+
+#+begin_src elisp :tangle ~/.emacs
+(global-set-key (kbd "C-|") (lambda () (interactive)
+                               (insert "\\")))
 #+end_src
