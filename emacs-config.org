@@ -345,6 +345,7 @@ nodes. Discover or create with ~C-c n f~
     :init
     (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
           gc-cons-threshold (* 100 1024 1024)
+          lsp-headerline-arrow "=>"
           read-process-output-max (* 1024 1024)
           treemacs-space-between-root-nodes nil
           company-minimum-prefix-length 1
