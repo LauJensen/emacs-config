@@ -1194,6 +1194,13 @@ A beautiful mode-line consists of many unicode icons and dampened colors
   (set-face-foreground 'doom-modeline-buffer-file "#a83800")
 #+end_src
 
+* Minibuffer
+
+Allow minibuffers within minibuffers within minibuffers, interlinked.
+
+#+begin_src elisp :tangle ~/.emacs
+(setq enable-recursive-minibuffers t)
+#+end_src
 
 * Note taking, PDF reader, Latex
 
