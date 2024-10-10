@@ -1192,6 +1192,9 @@ A beautiful mode-line consists of many unicode icons and dampened colors
   (set-face-background 'mode-line-inactive "#1E1E1E")
   (set-face-foreground 'mode-line-inactive "#a83800")
   (set-face-foreground 'doom-modeline-buffer-file "#a83800")
+
+  (set-face-attribute 'mode-line nil :box nil)
+  (set-face-attribute 'mode-line-inactive nil :box nil)
 #+end_src
 
 * Minibuffer
