@@ -809,6 +809,22 @@ These functions are fairly self-explanatory
       (message "nothing selected")))
 #+end_src
 
+Enable the following to automatically fix :as statements when saving
+
+#+begin_src elisp :tangle ~/.emacs
+(defun align-namespace ()
+  "Fixes :as keywords in requires before save-file "
+  (interactive)
+  (when (derived-mode-p 'clojure-mode)
+    (let ((initial-pos (point)))
+      (goto-char (point-min))
+      (mark-sexp)
+      (align-as)
+      (goto-char initial-pos))))
+
+(add-hook 'write-file-hooks 'align-namespace)
+#+end_src
+
 The following is a helper for .dir-locals which imports everything
 from your AWS profile, SESSION_TOKEN, SECRET_KEY, all the trimmings
 so that you can access your AWS environment from your REPL.
