@@ -768,7 +768,7 @@ These functions are fairly self-explanatory
               (message "Killed non-existing/unreadable file buffer: %s" filename))))))
     (message "Finished reverting buffers containing unmodified files."))
 
-  (defun rightmost-as ()
+(defun rightmost-as ()
     (interactive)
     (let ((start  (region-beginning))
           (end    (region-end))
@@ -778,13 +778,12 @@ These functions are fairly self-explanatory
         (goto-char start)
         (while (< (point) end)
           (goto-char (line-beginning-position))
-          (search-forward ":as")
-          (when (and (> (current-column) max-col)
-                     (< (point) end))
+          (search-forward ":as" end t)
+          (when (> (current-column) max-col)
             (setq max-col (current-column)))
           (forward-line 1)))
       (message "max column %d" max-col)
-      max-col))
+      (- max-col 3)))
 
 (defun align-as
     ()
