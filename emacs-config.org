@@ -799,7 +799,7 @@ These functions are fairly self-explanatory
           (while (< (point) end)
             (message "Point is %d" (point))
             (beginning-of-line)
-            (search-forward ":as")
+            (search-forward ":as" end t)
             (when (<= (point) end)
               (backward-word)
               (backward-char)
@@ -808,6 +808,7 @@ These functions are fairly self-explanatory
               (forward-line 1)
               (message "Point is %d" (point))))))
     (message "nothing selected")))
+
 #+end_src
 
 Enable the following to automatically fix :as statements when saving
