@@ -944,6 +944,7 @@ Enable live code-checking
 
 #+begin_src elisp :tangle ~/.emacs
     (setq flycheck-highlighting-mode 'sexps)
+    (setq flycheck-highlighting-style nil)
 #+end_src
 
 * Magit / Forge
