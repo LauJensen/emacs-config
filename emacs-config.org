@@ -274,6 +274,7 @@ nodes. Discover or create with ~C-c n f~
 #+begin_src elisp :tangle ~/.emacs
   (use-package unicode-fonts       :ensure t)
   (use-package nerd-icons          :ensure t)
+  (use-package all-the-icons       :ensure t)
   (use-package doom-modeline       :ensure t)
   (use-package jinx                :ensure t)
   (use-package k8s-mode            :ensure t)
