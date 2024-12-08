@@ -804,6 +804,13 @@ These functions are fairly self-explanatory
       (message "max column %d" max-col)
       (- max-col 3)))
 
+(defun insert-spaces
+   (n)
+   (interactive)
+   (while (> n 0)
+      (insert " ")
+      (setq n (- n 1)))
+
 (defun align-as
     ()
   (interactive)
