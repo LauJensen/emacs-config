@@ -852,11 +852,11 @@ Enable the following to automatically fix :as statements when saving
   "Fixes :as keywords in requires before save-file "
   (interactive)
   (when (derived-mode-p 'clojure-mode)
-    (let ((initial-pos (point)))
+    (save-excursion
       (goto-char (point-min))
       (mark-sexp)
-      (align-as)
-      (goto-char initial-pos))))
+      (align-as))
+    (deactivate-mark)))
 
 (add-hook 'write-file-hooks 'align-namespace)
 #+end_src
