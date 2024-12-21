@@ -35,6 +35,14 @@ mkdir ~/Documents/TODOs
 touch ~/Documents/Opgaver.org
 #+end_src
 
+For Emacs to look it's best, you need fonts! For text I like iosevka, but for symbols you need
+
+#+begin_src bash
+sudo pacman -S gnu-free-fonts ttf-nerd-font-symbols ttf-sourcecodepro-nerd
+#+end_src
+
+Alternatively, you can simply install nerd-fonts which is 8Gb.
+
 * Debugging
 
 If you're troubleshooting an infinite-loop type bug, this allows you you to send an interrupt signal and view the stacktrace.
