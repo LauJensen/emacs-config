@@ -809,7 +809,7 @@ These functions are fairly self-explanatory
    (interactive)
    (while (> n 0)
       (insert " ")
-      (setq n (- n 1)))
+      (setq n (- n 1))))
 
 (defun align-as
     ()
@@ -1124,7 +1124,9 @@ svg-tag-mode is fetched from https://github.com/rougier/svg-tag-mode
 It allows for [33%] text to be rendered as an honest to god progress
 bar, svg generated. Its quite hot and comes from the author of Nano.
 
-#+begin_src elisp :tangle ~/.emacs
+Disabled by default
+
+#+begin_src elisp
     (require 'svg-tag-mode)
 
     (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
