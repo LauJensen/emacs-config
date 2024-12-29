@@ -819,12 +819,12 @@ These functions are fairly self-explanatory
       (insert " ")
       (setq n (- n 1))))
 
-(defun align-as
-    ()
+(defun align-as ()
   (interactive)
   (if (use-region-p)
-      (let ((start     (region-beginning))
-            (end       (region-end))
+      (let ((start (region-beginning))
+            (end (region-end))
+            (break nil)
             (rightmost (rightmost-as)))
         (message "The region is active, and is from %d to %d, padding to %d"
                  start end rightmost)
@@ -833,16 +833,17 @@ These functions are fairly self-explanatory
           (while (< (point) end)
             (message "Point is %d" (point))
             (beginning-of-line)
-            (search-forward ":as" end t)
-            (when (<= (point) end)
-              (backward-word)
-              (backward-char)
-              (setq end (+ end (- rightmost (current-column))))
-              (insert-spaces (- rightmost (current-column)))
-              (forward-line 1)
-              (message "Point is %d" (point))))))
+            (if (or break (search-forward ":as" end t))
+                (progn
+                  (backward-word)
+                  (backward-char)
+                  (setq end (+ end (- rightmost (current-column))))
+                  (insert-spaces (- rightmost (current-column)))
+                  (forward-line 1)
+                  (message "Point is %d" (point)))
+              ;; If ":as" is not found, exit the loop
+              (setq break t)))))
     (message "nothing selected")))
-
 #+end_src
 
 Enable the following to automatically fix :as statements when saving
