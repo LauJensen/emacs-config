@@ -145,25 +145,6 @@ uninterrupted view of our code.
 
   (pixel-scroll-precision-mode)
 
-  (setq auto-mode-alist
-        (append '(("/.lisp$" . lisp-mode)
-                  ("/.lsp$" . lisp-mode)
-                  ("/.cl$" . lisp-mode)
-                  ("//.java$" . java-mode)
-                  ("SConstruct$" . python-mode)
-                  ("/.py$" . python-mode)
-                  ("/.asd$" . lisp-mode)
-                  ("/.system$" . lisp-mode)
-                  ("//.org$" . org-mode)
-                  ("//.mbox$" . vm-mode)
-                  ("//.muse$" . muse-mode)
-                  ("//.htm$" . nxhtml-mumamo-mode)
-                  ("//.html$" . nxhtml-mumamo-mode)
-                  ("//.k8s$" . k8s-mode)
-                  ("//.d2" . d2-mode)
-                  ("//.clj$" . cider-mode))
-                auto-mode-alist))
-
   (setenv "PATH" (concat (getenv "PATH") ":/usr/local/bin"))
   (setq exec-path (append exec-path '("/usr/local/bin")))
   (setq exec-path (add-to-list 'exec-path my-exec-path))
@@ -446,6 +427,7 @@ nodes. Discover or create with ~C-c n f~
   (doom-themes-treemacs-config)
   ;; Corrects (and improves) org-mode's native fontification.
   (doom-themes-org-config))
+
 
                                           ;(require 'unicode-fonts)
   (require 'nerd-icons)
@@ -1059,6 +1041,27 @@ just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
 (setq dall-e-shell-openai-key  (find-api-key "~/.api-keys" "chatgpt"))
 #+end_src
 
+* Consult
+
+#+begin_src elisp :tangle ~/.emacs
+  (use-package consult :ensure t)
+  (use-package vertico :ensure t :init (vertico-mode))
+
+  (global-set-key (kbd "C-x b") 'consult-buffer)
+  (global-set-key (kbd "C-s") 'consult-line)
+  (global-set-key (kbd "M-y") 'consult-yank-replace)
+  (global-set-key (kbd "C-æ t l") 'consult-theme)
+
+  (use-package orderless
+  :custom
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch))
+  ;; (orderless-component-separator #'orderless-escapable-split-on-space)
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
 * Ivy
 
 *Disabled*: This interferes with consult
@@ -1432,8 +1435,6 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (global-set-key (kbd "C-æ t") 'org-todo-list)
 
   (global-set-key (kbd "C-s-p") 'org-todo)
-
-  (global-set-key (kbd "C-s") 'swiper)
 #+end_src
 
 Using 65% keyboards is a beautiful thing, but not without issues
