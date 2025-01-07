@@ -374,7 +374,6 @@ nodes. Discover or create with ~C-c n f~
 
   ;; optionally
   (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
-  (use-package lsp-ivy      :ensure t :commands lsp-ivy-workspace-symbol :after ivy)
   (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
 
   (use-package org-autolist
@@ -1062,14 +1061,15 @@ just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
 
 * Ivy
 
+*Disabled*: This interferes with consult
+
 ivy is used for more sane filtering when searching for things, ivy-posframe
 pops the results center screen.
 
 Setting up Ivy and Ivy-Postframe + Swiper for beautiful search and filtering
 of minibuffers
 
-#+begin_src elisp :tangle ~/.emacs
-
+#+begin_src elisp
   (use-package ivy                 :ensure t)
 
   (require 'ivy)
@@ -1081,7 +1081,7 @@ of minibuffers
   (global-set-key (kbd "C-s") 'swiper)
 #+end_src
 
-Ivy-Posframe, currently disabled.
+Ivy-Posframe, currently disabled (unhandy but somewhat beautiful)
 
 #+begin_src elisp
   (use-package ivy-posframe        :ensure t :after ivy)
@@ -1100,7 +1100,7 @@ Ivy-Posframe, currently disabled.
 The themes used in this file make ivy-posframe searching, especially
 between buffers, a bit hard to read. Maximum visibility
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
 (set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
 #+end_src
 
@@ -1432,6 +1432,8 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (global-set-key (kbd "C-æ t") 'org-todo-list)
 
   (global-set-key (kbd "C-s-p") 'org-todo)
+
+  (global-set-key (kbd "C-s") 'swiper)
 #+end_src
 
 Using 65% keyboards is a beautiful thing, but not without issues
