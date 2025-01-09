@@ -62,6 +62,13 @@ Make sure Emacs can access Elpa and our manually added resources and tools
 TODO: Change to your local home folder, /Users for non-nix users
 
 #+begin_src elisp :tangle ~/.emacs
+(defun ensure-folder-exists (folder)
+  "Ensure that the folder named FOLDER exists. If it does not exist, create it."
+  (unless (file-directory-p folder)
+    (make-directory folder t)))
+
+(ensure-folder-exists "~/bin")
+
 (add-to-list 'load-path "/home/lau/.emacs.d/elpa/")
 (add-to-list 'load-path "/home/lau/.emacs.d/svg-tag-mode/")
 (add-to-list 'exec-path "/home/lau/bin/")
@@ -151,6 +158,9 @@ Actual installation/initialization:
 All the special folders and files are referenced here:
 
 #+begin_src elisp :tangle ~/.emacs
+(ensure-folder-exists "~/Documents/EmacsBackups")
+(ensure-folder-exists "~/Documents/Roam")
+
 (setq my-backup-folder "/home/lau/Documents/EmacsBackups")
 (setq my-exec-path     "/home/lau/bin")
 (setq my-roam-folder   "~/Documents/Roam")
