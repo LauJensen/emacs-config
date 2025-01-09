@@ -122,7 +122,6 @@
   (use-package nerd-icons          :ensure (:wait t))
   (use-package all-the-icons       :ensure (:wait t))
   (use-package doom-modeline       :ensure (:wait t))
-  (use-package jinx                :ensure (:wait t))
   (use-package k8s-mode            :ensure (:wait t))
   (use-package ejc-sql             :ensure (:wait t))
   (use-package mood-line           :ensure (:wait t))
@@ -138,7 +137,6 @@
   (use-package idle-highlight-mode :ensure (:wait t))
   (use-package pdf-tools           :ensure (:wait t))
   (use-package svg-lib             :ensure (:wait t))
-  (use-package org-autolist        :ensure (:wait t) :after org)
 ;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
 
   ;; With configs
@@ -175,6 +173,7 @@
 
   (use-package cider
     :ensure (:wait t)
+    :after clojure-mode
     :defer t
     :diminish subword-mode
     :config
@@ -874,4 +873,4 @@ format a title for a section of code that is comming."
 (global-set-key (kbd "C-|") (lambda () (interactive)
                                (insert "\\")))
 
-(add-hook 'elpaca-after-init-hook (lambda () (setq warning-minimum-level :warning)))
+;(add-hook 'elpaca-after-init-hook (lambda () (setq warning-minimum-level :warning)))
