@@ -87,7 +87,66 @@ For the fastest possible start-up (this was relevant 15 years ago)  Emacs can co
                            (byte-compile-file dot-emacs))))
 #+end_src
 
-* DONE Globals
+* Elpaca package-manager
+
+Elpaca is a fast parallelized package-manager which has strict dependency handling. .init/.emacs must start with this. That said, it complains alot, so this minimizes those complaints
+
+#+begin_src elisp :tangle ~/.emacs
+(setq package-enable-at-startup nil)
+(setq warning-minimum-level :error)
+#+end_src
+
+Actual installation/initialization:
+
+#+begin_src elisp :tangle ~/.emacs
+(defvar elpaca-installer-version 0.8)
+(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                              :ref nil :depth 1
+                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                              :build (:not elpaca--activate-package)))
+(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+       (build (expand-file-name "elpaca/" elpaca-builds-directory))
+       (order (cdr elpaca-order))
+       (default-directory repo))
+  (add-to-list 'load-path (if (file-exists-p build) build repo))
+  (unless (file-exists-p repo)
+    (make-directory repo t)
+    (when (< emacs-major-version 28) (require 'subr-x))
+    (condition-case-unless-debug err
+        (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                  ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                  ,@(when-let* ((depth (plist-get order :depth)))
+                                                      (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                  ,(plist-get order :repo) ,repo))))
+                  ((zerop (call-process "git" nil buffer t "checkout"
+                                        (or (plist-get order :ref) "--"))))
+                  (emacs (concat invocation-directory invocation-name))
+                  ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                  ((require 'elpaca))
+                  ((elpaca-generate-autoloads "elpaca" repo)))
+            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+          (error "%s" (with-current-buffer buffer (buffer-string))))
+      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+  (unless (require 'elpaca-autoloads nil t)
+    (require 'elpaca)
+    (elpaca-generate-autoloads "elpaca" repo)
+    (load "./elpaca-autoloads")))
+(add-hook 'after-init-hook #'elpaca-process-queues)
+(elpaca `(,@elpaca-order))
+
+(elpaca elpaca-use-package
+  ;; Enable use-package :ensure support for Elpaca.
+  (elpaca-use-package-mode))
+
+#+end_src
+
+
+
+* Globals
 
 All the special folders and files are referenced here:
 
@@ -194,6 +253,7 @@ Keep a reasonable amount of backups. Better safe than sorry.
    kept-old-versions   2
    version-control     t)
 
+   (setq create-lockfiles nil)
 #+end_src
 
 * Packages / ELPA
@@ -261,49 +321,44 @@ org-roam is used for managing multiple related (and unrelated) notes across
 nodes. Discover or create with ~C-c n f~
 
 #+begin_src elisp :tangle ~/.emacs
-  (use-package unicode-fonts       :ensure t)
-  (use-package nerd-icons          :ensure t)
-  (use-package all-the-icons       :ensure t)
-  (use-package doom-modeline       :ensure t)
-  (use-package jinx                :ensure t)
-  (use-package k8s-mode            :ensure t)
-  (use-package ejc-sql             :ensure t)
-  (use-package mood-line           :ensure t)
-  (use-package swiper              :ensure t)
-  (use-package yascroll            :ensure t)
-  (use-package auto-complete       :ensure t)
-  (use-package magit               :ensure t)
-  (use-package flycheck            :ensure t)
-  (use-package flycheck-clj-kondo  :ensure t)
-  (use-package indium              :ensure t)
-  (use-package d2-mode             :ensure t)
-  (use-package chatgpt-shell       :ensure t)
-  (use-package ranger              :ensure t)
-  (use-package subword             :ensure t)
-  (use-package idle-highlight-mode :ensure t)
-  (use-package pdf-tools           :ensure t)
-  (use-package svg-lib             :ensure t)
-  (use-package org-roam            :ensure t :after org)
-  (use-package org-autolist        :ensure t :after org)
-  (use-package forge               :ensure t :after magit)
+  (use-package unicode-fonts       :ensure (:wait t))
+  (use-package nerd-icons          :ensure (:wait t))
+  (use-package all-the-icons       :ensure (:wait t))
+  (use-package doom-modeline       :ensure (:wait t))
+  (use-package jinx                :ensure (:wait t))
+  (use-package k8s-mode            :ensure (:wait t))
+  (use-package ejc-sql             :ensure (:wait t))
+  (use-package mood-line           :ensure (:wait t))
+  (use-package yascroll            :ensure (:wait t))
+  (use-package auto-complete       :ensure (:wait t))
+  (use-package transient           :ensure (:wait t))
+  (use-package magit               :ensure (:wait t) :after transient)
+  (use-package flycheck            :ensure (:wait t))
+  (use-package flycheck-clj-kondo  :ensure (:wait t))
+  (use-package d2-mode             :ensure (:wait t))
+  (use-package chatgpt-shell       :ensure (:wait t))
+  (use-package ranger              :ensure (:wait t))
+  (use-package idle-highlight-mode :ensure (:wait t))
+  (use-package pdf-tools           :ensure (:wait t))
+  (use-package svg-lib             :ensure (:wait t))
+  (use-package org-autolist        :ensure (:wait t) :after org)
+;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
 
   ;; With configs
 
   (use-package markdown-mode
-  :ensure t
+  :ensure (:wait t)
   :mode ("README\\.md\\'" . gfm-mode)
   :init (setq markdown-command "multimarkdown"))
 
   (use-package jinx
+    :ensure (:wait t)
     :hook (emacs-startup . global-jinx-mode)
     :bind (("M-$" . jinx-correct)
            ("C-M-$" . jinx-languages)))
 
-  (use-package clojure-mode-extra-font-locking
-  :ensure t)
-
   (use-package clojure-mode
-    :ensure t
+    :ensure (:wait t)
     :mode (("\\.clj\\'" . clojure-mode)
            ("\\.cljs\\'" . clojure-mode)
            ("\\.cljd\\'" . clojure-mode)
@@ -317,8 +372,12 @@ nodes. Discover or create with ~C-c n f~
     (add-hook 'clojure-mode-hook #'flycheck-mode)
     (add-hook 'clojure-mode-hook #'idle-highlight-mode))
 
+  (use-package clojure-mode-extra-font-locking
+  :after clojure-mode
+  :ensure (:wait t))
+
   (use-package cider
-    :ensure t
+    :ensure (:wait t)
     :defer t
     :diminish subword-mode
     :config
@@ -332,6 +391,7 @@ nodes. Discover or create with ~C-c n f~
     (cider-repl-toggle-pretty-printing))
 
   (use-package lsp-mode
+    :ensure (:wait t)
     :init
     (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
           gc-cons-threshold (* 100 1024 1024)
@@ -354,15 +414,16 @@ nodes. Discover or create with ~C-c n f~
     :commands lsp)
 
   ;; optionally
-  (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
-  (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
+  (use-package lsp-ui       :ensure (:wait t) :commands lsp-ui-mode)
+  (use-package lsp-treemacs :ensure (:wait t) :commands lsp-treemacs-errors-list)
 
   (use-package org-autolist
+    :ensure (:wait t)
     :after org
     :hook (org-mode . org-autolist-mode))
 
   (use-package org-roam
-    :ensure t
+    :ensure (:wait t)
     :init
     (setq org-roam-v2-ack t)
     (setq org-return-follows-link  t)
@@ -384,34 +445,22 @@ nodes. Discover or create with ~C-c n f~
     (org-roam-setup))
 
   (use-package org-fragtog
-    :ensure t
+    :ensure (:wait t)
     :after org
     :hook (org-mode . org-fragtog-mode))
 
   (use-package org-bullets
-  :ensure t
+  :ensure (:wait t)
   :after org
   :hook (org-mode . org-bullets-mode))
 
-  (use-package org
-    :mode (("\\.org$" . org-mode))
-    :after org-fragtog
-    :ensure t
-    :init
-    (define-key org-mode-map (kbd "<M-return>") nil)
-    (global-unset-key        (kbd "<M-return>"))
-    (global-set-key          (kbd "<M-return>") 'org-meta-return)
-    :bind
-    (("M-RET"   . org-meta-return)))
-
-
   (use-package timu-rouge-theme
-    :ensure t
+    :ensure (:wait t)
     :config
     (load-theme 'timu-rouge t))
 
   (use-package doom-themes
-  :ensure t
+  :ensure (:wait t)
   :config
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
@@ -439,13 +488,13 @@ nodes. Discover or create with ~C-c n f~
 For completion we use company mode in the back and Corfu in the front
 
 #+begin_src elisp :tangle ~/.emacs
-(use-package company             :ensure t
+(use-package company             :ensure (:wait t)
     :init
     (setq company-minimum-prefix-length 1
           company-idle-delay 0.8)) ;; default is 0.2
 
 (use-package corfu
-  :ensure t
+  :ensure (:wait t)
   :init
   (global-corfu-mode))
 #+end_src
@@ -492,7 +541,7 @@ Highlight the currently active line
 10/10 users choose org-tree-slide over Powerpoint, every time
 
 #+begin_src elisp :tangle ~/.emacs
-(use-package org-tree-slide :ensure t)
+(use-package org-tree-slide :ensure (:wait t))
 
 (defun qrt/font-size (s)
   (interactive (list (read-number "font size: " 100)))
@@ -653,7 +702,7 @@ org source blocks can compile directly if they are added to babel.
 #+begin_src elisp :tangle ~/.emacs
   (setq org-startup-indented t)
 
-  (use-package ob-d2 :ensure t :after d2-mode)
+  (use-package ob-d2 :ensure (:wait t) :after d2-mode)
 
   (require 'ob-d2)
 
@@ -968,7 +1017,9 @@ Enable live code-checking
 Magit just works, Forge requires the addition of 'Forge' which are
 Github/Gitlab instances and any auth info should be added to ~/.authinfo
 
-#+begin_src elisp :tangle ~/.emacs
+*Disabled*
+
+#+begin_src elisp
   (require 'forge)
 
   (defun approve-pr
@@ -1044,19 +1095,16 @@ just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
 * Consult
 
 #+begin_src elisp :tangle ~/.emacs
-  (use-package consult :ensure t)
-  (use-package vertico :ensure t :init (vertico-mode))
+  (use-package consult :ensure (:wait t))
+  (use-package vertico :ensure (:wait t) :init (vertico-mode))
 
   (global-set-key (kbd "C-x b") 'consult-buffer)
   (global-set-key (kbd "C-s") 'consult-line)
   (global-set-key (kbd "M-y") 'consult-yank-replace)
   (global-set-key (kbd "C-æ t l") 'consult-theme)
 
-  (use-package orderless
+  (use-package orderless :ensure (:wait t)
   :custom
-  ;; Configure a custom style dispatcher (see the Consult wiki)
-  ;; (orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch))
-  ;; (orderless-component-separator #'orderless-escapable-split-on-space)
   (completion-styles '(orderless basic))
   (completion-category-defaults nil)
   (completion-category-overrides '((file (styles partial-completion)))))
@@ -1073,7 +1121,7 @@ Setting up Ivy and Ivy-Postframe + Swiper for beautiful search and filtering
 of minibuffers
 
 #+begin_src elisp
-  (use-package ivy                 :ensure t)
+  (use-package ivy                 :ensure (:wait t))
 
   (require 'ivy)
   (ivy-mode 1)
@@ -1087,7 +1135,7 @@ of minibuffers
 Ivy-Posframe, currently disabled (unhandy but somewhat beautiful)
 
 #+begin_src elisp
-  (use-package ivy-posframe        :ensure t :after ivy)
+  (use-package ivy-posframe        :ensure (:wait t) :after ivy)
 
   (require 'ivy-posframe)
 
@@ -1111,7 +1159,7 @@ To add a bit more information to search-bars, we use Marginalia
 
 #+begin_src elisp :tangle ~/.emacs
 (use-package marginalia
-   :ensure t
+   :ensure (:wait t)
    :init (marginalia-mode))
 #+end_src
 
@@ -1442,4 +1490,10 @@ Using 65% keyboards is a beautiful thing, but not without issues
 #+begin_src elisp :tangle ~/.emacs
 (global-set-key (kbd "C-|") (lambda () (interactive)
                                (insert "\\")))
+#+end_src
+
+* Finally
+
+#+begin_src elisp :tangle ~/.emacs
+(add-hook 'elpaca-after-init-hook (lambda () (setq warning-minimum-level :warning)))
 #+end_src

@@ -1,6 +1,52 @@
 (add-to-list 'load-path "/home/lau/.emacs.d/elpa/")
-(add-to-list 'load-path "/home/lau/.emacs.d/nano-emacs/")
+(add-to-list 'load-path "/home/lau/.emacs.d/svg-tag-mode/")
 (add-to-list 'exec-path "/home/lau/bin/")
+
+(setq package-enable-at-startup nil)
+(setq warning-minimum-level :error)
+
+(defvar elpaca-installer-version 0.8)
+(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                              :ref nil :depth 1
+                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                              :build (:not elpaca--activate-package)))
+(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+       (build (expand-file-name "elpaca/" elpaca-builds-directory))
+       (order (cdr elpaca-order))
+       (default-directory repo))
+  (add-to-list 'load-path (if (file-exists-p build) build repo))
+  (unless (file-exists-p repo)
+    (make-directory repo t)
+    (when (< emacs-major-version 28) (require 'subr-x))
+    (condition-case-unless-debug err
+        (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                  ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                  ,@(when-let* ((depth (plist-get order :depth)))
+                                                      (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                  ,(plist-get order :repo) ,repo))))
+                  ((zerop (call-process "git" nil buffer t "checkout"
+                                        (or (plist-get order :ref) "--"))))
+                  (emacs (concat invocation-directory invocation-name))
+                  ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                  ((require 'elpaca))
+                  ((elpaca-generate-autoloads "elpaca" repo)))
+            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+          (error "%s" (with-current-buffer buffer (buffer-string))))
+      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+  (unless (require 'elpaca-autoloads nil t)
+    (require 'elpaca)
+    (elpaca-generate-autoloads "elpaca" repo)
+    (load "./elpaca-autoloads")))
+(add-hook 'after-init-hook #'elpaca-process-queues)
+(elpaca `(,@elpaca-order))
+
+(elpaca elpaca-use-package
+  ;; Enable use-package :ensure support for Elpaca.
+  (elpaca-use-package-mode))
 
 (setq my-backup-folder "/home/lau/Documents/EmacsBackups")
 (setq my-exec-path     "/home/lau/bin")
@@ -36,25 +82,6 @@
 
 (pixel-scroll-precision-mode)
 
-(setq auto-mode-alist
-      (append '(("/.lisp$" . lisp-mode)
-                ("/.lsp$" . lisp-mode)
-                ("/.cl$" . lisp-mode)
-                ("//.java$" . java-mode)
-                ("SConstruct$" . python-mode)
-                ("/.py$" . python-mode)
-                ("/.asd$" . lisp-mode)
-                ("/.system$" . lisp-mode)
-                ("//.org$" . org-mode)
-                ("//.mbox$" . vm-mode)
-                ("//.muse$" . muse-mode)
-                ("//.htm$" . nxhtml-mumamo-mode)
-                ("//.html$" . nxhtml-mumamo-mode)
-                ("//.k8s$" . k8s-mode)
-                ("//.d2" . d2-mode)
-                ("//.clj$" . cider-mode))
-              auto-mode-alist))
-
 (setenv "PATH" (concat (getenv "PATH") ":/usr/local/bin"))
 (setq exec-path (append exec-path '("/usr/local/bin")))
 (setq exec-path (add-to-list 'exec-path my-exec-path))
@@ -77,6 +104,8 @@
  kept-old-versions   2
  version-control     t)
 
+ (setq create-lockfiles nil)
+
 ;(setq package-check-signature nil)
 
 (setq package-archives
@@ -89,180 +118,257 @@
    (package-refresh-contents)
    (package-install 'use-package))
 
-(use-package unicode-fonts       :ensure t)
-(use-package nerd-icons          :ensure t)
-(use-package doom-modeline       :ensure t)
-(use-package jinx                :ensure t)
-(use-package k8s-mode            :ensure t)
-(use-package ejc-sql             :ensure t)
-(use-package ivy                 :ensure t)
-(use-package ivy-posframe        :ensure t :after ivy)
-(use-package mood-line           :ensure t)
-(use-package swiper              :ensure t)
-(use-package yascroll            :ensure t)
-(use-package auto-complete       :ensure t)
-(use-package magit               :ensure t)
-(use-package flycheck            :ensure t)
-(use-package flycheck-clj-kondo  :ensure t)
-(use-package indium              :ensure t)
-(use-package d2-mode             :ensure t)
-(use-package chatgpt-shell       :ensure t)
-(use-package ranger              :ensure t)
-(use-package subword             :ensure t)
-(use-package idle-highlight-mode :ensure t)
-(use-package pdf-tools           :ensure t)
-(use-package svg-lib             :ensure t)
-(use-package org-roam            :ensure t :after org)
-(use-package org-autolist        :ensure t :after org)
-(use-package forge               :ensure t :after magit)
+(use-package unicode-fonts       :ensure (:wait t))
+  (use-package nerd-icons          :ensure (:wait t))
+  (use-package all-the-icons       :ensure (:wait t))
+  (use-package doom-modeline       :ensure (:wait t))
+  (use-package jinx                :ensure (:wait t))
+  (use-package k8s-mode            :ensure (:wait t))
+  (use-package ejc-sql             :ensure (:wait t))
+  (use-package mood-line           :ensure (:wait t))
+  (use-package yascroll            :ensure (:wait t))
+  (use-package auto-complete       :ensure (:wait t))
+  (use-package transient           :ensure (:wait t))
+  (use-package magit               :ensure (:wait t) :after transient)
+  (use-package flycheck            :ensure (:wait t))
+  (use-package flycheck-clj-kondo  :ensure (:wait t))
+  (use-package d2-mode             :ensure (:wait t))
+  (use-package chatgpt-shell       :ensure (:wait t))
+  (use-package ranger              :ensure (:wait t))
+  (use-package idle-highlight-mode :ensure (:wait t))
+  (use-package pdf-tools           :ensure (:wait t))
+  (use-package svg-lib             :ensure (:wait t))
+  (use-package org-autolist        :ensure (:wait t) :after org)
+;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
 
-;; With configs
+  ;; With configs
 
-(use-package markdown-mode
-:ensure t
-:mode ("README\\.md\\'" . gfm-mode)
-:init (setq markdown-command "multimarkdown"))
+  (use-package markdown-mode
+  :ensure (:wait t)
+  :mode ("README\\.md\\'" . gfm-mode)
+  :init (setq markdown-command "multimarkdown"))
 
-(use-package jinx
-  :hook (emacs-startup . global-jinx-mode)
-  :bind (("M-$" . jinx-correct)
-         ("C-M-$" . jinx-languages)))
+  (use-package jinx
+    :ensure (:wait t)
+    :hook (emacs-startup . global-jinx-mode)
+    :bind (("M-$" . jinx-correct)
+           ("C-M-$" . jinx-languages)))
 
-(use-package clojure-mode-extra-font-locking
-:ensure t)
+  (use-package clojure-mode
+    :ensure (:wait t)
+    :mode (("\\.clj\\'" . clojure-mode)
+           ("\\.cljs\\'" . clojure-mode)
+           ("\\.cljd\\'" . clojure-mode)
+           ("\\.cljc\\'" . clojure-mode)
+           ("\\.edn\\'" . clojure-mode))
+    :init
+    (add-hook 'clojure-mode-hook #'subword-mode)
+    (add-hook 'clojure-mode-hook #'clojure-mode-extra-font-locking)
+    (add-hook 'clojure-mode-hook #'eldoc-mode)
+    (add-hook 'clojure-mode-hook #'lsp)
+    (add-hook 'clojure-mode-hook #'flycheck-mode)
+    (add-hook 'clojure-mode-hook #'idle-highlight-mode))
 
-(use-package clojure-mode
-  :ensure t
-  :mode (("\\.clj\\'" . clojure-mode)
-         ("\\.cljs\\'" . clojure-mode)
-         ("\\.cljd\\'" . clojure-mode)
-         ("\\.cljc\\'" . clojure-mode)
-         ("\\.edn\\'" . clojure-mode))
-  :init
-  (add-hook 'clojure-mode-hook #'subword-mode)
-  (add-hook 'clojure-mode-hook #'clojure-mode-extra-font-locking)
-  (add-hook 'clojure-mode-hook #'eldoc-mode)
-  (add-hook 'clojure-mode-hook #'lsp)
-  (add-hook 'clojure-mode-hook #'flycheck-mode)
-  (add-hook 'clojure-mode-hook #'idle-highlight-mode))
+  (use-package clojure-mode-extra-font-locking
+  :after clojure-mode
+  :ensure (:wait t))
 
-(use-package cider
-  :ensure t
-  :defer t
-  :diminish subword-mode
-  :config
-  (setq nrepl-log-messages t
-        cider-repl-display-in-current-window t
-        cider-repl-use-clojure-font-lock t
-        cider-prompt-save-file-on-load 'always-save
-        cider-font-lock-dynamically '(macro core function var)
-        nrepl-hide-special-buffers t
-        cider-overlays-use-font-lock t)
-  (cider-repl-toggle-pretty-printing))
+  (use-package cider
+    :ensure (:wait t)
+    :defer t
+    :diminish subword-mode
+    :config
+    (setq nrepl-log-messages t
+          cider-repl-display-in-current-window t
+          cider-repl-use-clojure-font-lock t
+          cider-prompt-save-file-on-load 'always-save
+          cider-font-lock-dynamically '(macro core function var)
+          nrepl-hide-special-buffers t
+          cider-overlays-use-font-lock t)
+    (cider-repl-toggle-pretty-printing))
 
-(use-package lsp-mode
-  :init
-  (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
-        gc-cons-threshold (* 100 1024 1024)
-        read-process-output-max (* 1024 1024)
-        treemacs-space-between-root-nodes nil
-        company-minimum-prefix-length 1
-        lsp-idle-delay 0.800
-        lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
-                                        ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
-        cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
-        )
-  :config
-  (define-key lsp-mode-map (kbd "C-c C-u") lsp-command-map)
-  :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-         (clojure-mode . lsp)
-         ;; if you want which-key integration
-         ;;(lsp-mode . lsp-enable-which-key-integration)
-         )
-  :commands lsp)
+  (use-package lsp-mode
+    :ensure (:wait t)
+    :init
+    (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
+          gc-cons-threshold (* 100 1024 1024)
+          lsp-headerline-arrow "=>"
+          read-process-output-max (* 1024 1024)
+          treemacs-space-between-root-nodes nil
+          company-minimum-prefix-length 1
+          lsp-idle-delay 0.800
+          lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
+                                          ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
+          cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
+          )
+    :config
+    (define-key lsp-mode-map (kbd "C-c C-u") lsp-command-map)
+    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+           (clojure-mode . lsp)
+           ;; if you want which-key integration
+           ;;(lsp-mode . lsp-enable-which-key-integration)
+           )
+    :commands lsp)
 
-;; optionally
-(use-package lsp-ui       :ensure t :commands lsp-ui-mode)
-(use-package lsp-ivy      :ensure t :commands lsp-ivy-workspace-symbol)
-(use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
+  ;; optionally
+  (use-package lsp-ui       :ensure (:wait t) :commands lsp-ui-mode)
+  (use-package lsp-treemacs :ensure (:wait t) :commands lsp-treemacs-errors-list)
 
-(use-package org-autolist
+  (use-package org-autolist
+    :ensure (:wait t)
+    :after org
+    :hook (org-mode . org-autolist-mode))
+
+  (use-package org-roam
+    :ensure (:wait t)
+    :init
+    (setq org-roam-v2-ack t)
+    (setq org-return-follows-link  t)
+    (setq org-roam-node-display-template
+          (concat "${title:*} "
+                  (propertize "${tags:10}" 'face 'org-tag)))
+    :custom
+    (org-roam-directory my-roam-folder)
+    (org-roam-completion-everywhere t)
+
+
+    :bind (("C-c n l" . org-roam-buffer-toggle)
+           ("C-c n f" . org-roam-node-find)
+           ("C-c n i" . org-roam-node-insert)
+           :map org-mode-map
+           ("M-RET"   . org-meta-return)
+           ("C-M-i"   . completion-at-point))
+    :config
+    (org-roam-setup))
+
+  (use-package org-fragtog
+    :ensure (:wait t)
+    :after org
+    :hook (org-mode . org-fragtog-mode))
+
+  (use-package org-bullets
+  :ensure (:wait t)
   :after org
-  :hook (org-mode . org-autolist-mode))
+  :hook (org-mode . org-bullets-mode))
 
-(use-package org-roam
-  :ensure t
-  :init
-  (setq org-roam-v2-ack t)
-  (setq org-return-follows-link  t)
-  (setq org-roam-node-display-template
-        (concat "${title:*} "
-                (propertize "${tags:10}" 'face 'org-tag)))
-  :custom
-  (org-roam-directory my-roam-folder)
-  (org-roam-completion-everywhere t)
+  (use-package timu-rouge-theme
+    :ensure (:wait t)
+    :config
+    (load-theme 'timu-rouge t))
 
-
-  :bind (("C-c n l" . org-roam-buffer-toggle)
-         ("C-c n f" . org-roam-node-find)
-         ("C-c n i" . org-roam-node-insert)
-         :map org-mode-map
-         ("M-RET"   . org-meta-return)
-         ("C-M-i"   . completion-at-point))
+  (use-package doom-themes
+  :ensure (:wait t)
   :config
-  (org-roam-setup))
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+        doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  (load-theme 'doom-gruvbox t)
+  (load-theme 'doom-Iosvkem t)
+  (load-theme 'doom-dracula t)
 
-(use-package org-fragtog
-  :ensure t
-  :after org
-  :hook (org-mode . org-fragtog-mode))
-
-(use-package org-bullets
-:ensure t
-:after org
-:hook (org-mode . org-bullets-mode))
-
-(use-package org
-  :mode (("\\.org$" . org-mode))
-  :after org-fragtog
-  :ensure t
-  :init
-  (define-key org-mode-map (kbd "<M-return>") nil)
-  (global-unset-key        (kbd "<M-return>"))
-  (global-set-key          (kbd "<M-return>") 'org-meta-return)
-  :bind
-  (("M-RET"   . org-meta-return)))
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
+  ;; or for treemacs users
+  (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
+  (doom-themes-treemacs-config)
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config))
 
 
-(use-package timu-rouge-theme
-  :ensure t
-  :config
-  (load-theme 'timu-rouge t))
+                                          ;(require 'unicode-fonts)
+  (require 'nerd-icons)
+  (require 'doom-modeline)
+  (require 'package)
+  (require 'k8s-mode)
 
-                                        ;(require 'unicode-fonts)
-(require 'nerd-icons)
-(require 'doom-modeline)
-(require 'package)
-(require 'k8s-mode)
-
-(use-package company             :ensure t
+(use-package company             :ensure (:wait t)
     :init
     (setq company-minimum-prefix-length 1
           company-idle-delay 0.8)) ;; default is 0.2
 
 (use-package corfu
-  :ensure t
+  :ensure (:wait t)
   :init
   (global-corfu-mode))
 
 (set-frame-font "iosevka 15")
+(set-face-attribute 'default nil :weight 'light)
 
 (setq blink-cursor-blinks 0)
 
-(set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
-
 (setq ediff-split-window-function 'split-window-horizontally
       ediff-window-setup-function 'ediff-setup-windows-plain)
+
+(setq frame-resize-pixelwise t)
+
+(global-hl-line-mode 1)
+
+(use-package org-tree-slide :ensure (:wait t))
+
+(defun qrt/font-size (s)
+  (interactive (list (read-number "font size: " 100)))
+  (set-face-attribute 'default nil :height s))
+
+(defvar qrt/org-meta-line-hidden-p nil)
+(defun qrt/hide-org-meta-line ()
+  (interactive)
+  (setq qrt/org-meta-line-hidden-p t)
+  (set-face-attribute 'org-meta-line nil
+                      :foreground (face-attribute 'default :background)))
+
+(defun qrt/show-org-meta-line ()
+  (interactive)
+  (setq qrt/org-meta-line-hidden-p nil)
+  (set-face-attribute 'org-meta-line nil :foreground nil))
+
+(defun qrt/toggle-org-meta-line-visibility ()
+  (interactive)
+  (if qrt/org-meta-line-hidden-p
+      (qrt/show-org-meta-line)
+    (qrt/hide-org-meta-line)))
+
+(defvar qrt/orig-mode-line mode-line-format)
+
+(defun qrt/hide-mode-line ()
+  (setq-default mode-line-format nil))
+
+(defun qrt/show-mode-line ()
+  (setq-default mode-line-format qrt/orig-mode-line))
+
+(defun qrt/toggle-mode-line ()
+  (interactive)
+  (if mode-line-format
+      (qrt/hide-mode-line)
+    (qrt/show-mode-line)))
+
+(setq org-image-actual-width nil)
+(setq org-tree-slide-activate-message "slideshow started")
+
+(add-hook 'org-mode-hook
+          (lambda ()
+            (local-set-key (kbd "<f8>") 'org-tree-slide-mode)))
+
+(eval-after-load 'org-tree-slide
+  (lambda ()
+    (define-key org-tree-slide-mode-map (kbd "C-<right>") 'org-tree-slide-move-next-tree)
+    (define-key org-tree-slide-mode-map (kbd "C-<left>") 'org-tree-slide-move-previous-tree)))
+
+(defun qrt/init-org-tree-slide ()
+  (org-bullets-mode 1)
+  (org-toggle-inline-images 1)
+  (qrt/hide-mode-line)
+  (qrt/hide-org-meta-line)
+  (qrt/font-size 200))
+
+(defun qrt/finish-org-tree-slide ()
+  (org-bullets-mode 0)
+  (org-toggle-inline-images nil)
+  (qrt/show-mode-line)
+  (qrt/show-org-meta-line)
+  (qrt/font-size 150))
+
+(add-hook 'org-tree-slide-play-hook #'qrt/init-org-tree-slide)
+(add-hook 'org-tree-slide-stop-hook #'qrt/finish-org-tree-slide)
 
 (require 'ejc-sql)
 ;(require 'ejc-autocomplete)
@@ -333,7 +439,7 @@
 
 (setq org-startup-indented t)
 
-(use-package ob-d2 :ensure t :after d2-mode)
+(use-package ob-d2 :ensure (:wait t) :after d2-mode)
 
 (require 'ob-d2)
 
@@ -369,93 +475,120 @@
 
 (setq org-hide-emphasis-markers t)
 
+(setq org-agenda-files '("~/Documents/TODOs/Opgaver.org"))
+
+(setq org-todo-keywords
+      '((sequence "TODO" "BLOCKED" "HOLD" "|" "DONE" "CANCELLED")))
+
 (defvar find-file-root-prefix "/sudo:root@localhost:"
-  "The prefix of root user use in Emacs.")
+    "The prefix of root user use in Emacs.")
 
-(defun find-file-root (file)
-  "Find file with root."
-  (interactive "Find file as sudo: ")
-  (find-file (concat find-file-root-prefix file)))
+  (defun find-file-root (file)
+    "Find file with root."
+    (interactive "Find file as sudo: ")
+    (find-file (concat find-file-root-prefix file)))
 
-(defun find-file-smb(file)
-  "Access file through samba protocol."
-  (interactive "fFind file as samba: ")
-  (find-file (concat "/smb:" file)))
+  (defun find-file-smb(file)
+    "Access file through samba protocol."
+    (interactive "fFind file as samba: ")
+    (find-file (concat "/smb:" file)))
 
-(defun remove-dos-eol ()
-  "Do not show ^M in files containing mixed UNIX and DOS line endings."
-  (interactive)
-  (setq buffer-display-table (make-display-table))
-  (aset buffer-display-table ?\^M []))
+  (defun remove-dos-eol ()
+    "Do not show ^M in files containing mixed UNIX and DOS line endings."
+    (interactive)
+    (setq buffer-display-table (make-display-table))
+    (aset buffer-display-table ?\^M []))
 
-(defun get-string-from-file (filePath)
-  "Return filePath's file content."
-  (with-temp-buffer
-    (insert-file-contents filePath)
-    (buffer-string)))
+  (defun get-string-from-file (filePath)
+    "Return filePath's file content."
+    (with-temp-buffer
+      (insert-file-contents filePath)
+      (buffer-string)))
 
-(defun revert-all-buffers ()
-  "Refresh all open file buffers without confirmation.
-    Buffers in modified (not yet saved) state in emacs will not be reverted. They
-    will be reverted though if they were modified outside emacs.
-    Buffers visiting files which do not exist any more or are no longer readable
-    will be killed."
-  (interactive)
-  (dolist (buf (buffer-list))
-    (let ((filename (buffer-file-name buf)))
-      ;; Revert only buffers containing files, which are not modified;
-      ;; do not try to revert non-file buffers like *Messages*.
-      (when (and filename
-                 (not (buffer-modified-p buf)))
-        (if (file-readable-p filename)
-            ;; If the file exists and is readable, revert the buffer.
-            (with-current-buffer buf
-              (revert-buffer :ignore-auto :noconfirm :preserve-modes))
-          ;; Otherwise, kill the buffer.
-          (let (kill-buffer-query-functions) ; No query done when killing buffer
-            (kill-buffer buf)
-            (message "Killed non-existing/unreadable file buffer: %s" filename))))))
-  (message "Finished reverting buffers containing unmodified files."))
+  (defun revert-all-buffers ()
+    "Refresh all open file buffers without confirmation.
+      Buffers in modified (not yet saved) state in emacs will not be reverted. They
+      will be reverted though if they were modified outside emacs.
+      Buffers visiting files which do not exist any more or are no longer readable
+      will be killed."
+    (interactive)
+    (dolist (buf (buffer-list))
+      (let ((filename (buffer-file-name buf)))
+        ;; Revert only buffers containing files, which are not modified;
+        ;; do not try to revert non-file buffers like *Messages*.
+        (when (and filename
+                   (not (buffer-modified-p buf)))
+          (if (file-readable-p filename)
+              ;; If the file exists and is readable, revert the buffer.
+              (with-current-buffer buf
+                (revert-buffer :ignore-auto :noconfirm :preserve-modes))
+            ;; Otherwise, kill the buffer.
+            (let (kill-buffer-query-functions) ; No query done when killing buffer
+              (kill-buffer buf)
+              (message "Killed non-existing/unreadable file buffer: %s" filename))))))
+    (message "Finished reverting buffers containing unmodified files."))
 
 (defun rightmost-as ()
-  (interactive)
-  (let ((start  (region-beginning))
-        (end    (region-end))
-        (max-col 0  ))
-    (print "walking")
-    (save-excursion
-      (goto-char start)
-      (while (< (point) end)
-        (goto-char (line-beginning-position))
-        (search-forward ":as")
-        (when (> (current-column) max-col)
-          (setq max-col (current-column)))
-        (forward-line 1)))
-    (message "max column %d" max-col)
-    max-col))
+    (interactive)
+    (let ((start  (region-beginning))
+          (end    (region-end))
+          (max-col 0  ))
+      (print "walking")
+      (save-excursion
+        (goto-char start)
+        (while (< (point) end)
+          (goto-char (line-beginning-position))
+          (search-forward ":as" end t)
+          (when (> (current-column) max-col)
+            (setq max-col (current-column)))
+          (forward-line 1)))
+      (message "max column %d" max-col)
+      (- max-col 3)))
+
+(defun insert-spaces
+   (n)
+   (interactive)
+   (while (> n 0)
+      (insert " ")
+      (setq n (- n 1))))
 
 (defun align-as ()
   (interactive)
   (if (use-region-p)
-      (let ((start     (region-beginning))
-            (end       (region-end))
+      (let ((start (region-beginning))
+            (end (region-end))
+            (break nil)
             (rightmost (rightmost-as)))
         (message "The region is active, and is from %d to %d, padding to %d"
                  start end rightmost)
         (save-excursion
           (goto-char start)
           (while (< (point) end)
-            (goto-char (line-beginning-position))
-            (search-forward ":as")
-            (backward-word)
-            (backward-char)
-            (when (< (current-column) rightmost)
-              (setq _iter (- rightmost (current-column) 3))
-              (while (> _iter 0)
-                (insert " ")
-                (setq _iter (- _iter 1))))
-            (forward-line 1))))
+            (message "Point is %d" (point))
+            (beginning-of-line)
+            (if (or break (search-forward ":as" end t))
+                (progn
+                  (backward-word)
+                  (backward-char)
+                  (setq end (+ end (- rightmost (current-column))))
+                  (insert-spaces (- rightmost (current-column)))
+                  (forward-line 1)
+                  (message "Point is %d" (point)))
+              ;; If ":as" is not found, exit the loop
+              (setq break t)))))
     (message "nothing selected")))
+
+(defun align-namespace ()
+  "Fixes :as keywords in requires before save-file "
+  (interactive)
+  (when (derived-mode-p 'clojure-mode)
+    (save-excursion
+      (goto-char (point-min))
+      (mark-sexp)
+      (align-as))
+    (deactivate-mark)))
+
+(add-hook 'write-file-hooks 'align-namespace)
 
 (defun read-aws-creds (prefix profile)
   (interactive "Mprofile-name: ")
@@ -522,32 +655,16 @@ format a title for a section of code that is comming."
 (setq nrepl-hide-special-buffers t)
 (setq cider-show-error-buffer nil); 'only-in-repl)
 (setq cider-auto-select-error-buffer nil)
+(setq cider-repl-display-help-banner nil)
+
+(setq clojure-toplevel-inside-comment-form t)
 
 (setq cider-repl-history-file "~/.cider-repl-history")
 
 (setq cider-repl-use-pretty-printing t)
 
 (setq flycheck-highlighting-mode 'sexps)
-
-(require 'forge)
-
-(defun approve-pr
-    (pr-num)
-  (interactive "sPull request number:")
-  (if (= 0 (shell-command
-            (concat "gh pr review " pr-num " -a")))
-      (message "Approved")
-    (message "Failed")))
-
-(add-hook 'forge-topic-mode
-          (lambda ()
-            (local-set-key (kbd "C-c C-y") 'approve-pr)))
-
-(add-to-list 'forge-alist
-             (list "github.ccta.dk"
-                   "api.github.ccta.dk"
-                   "github.ccta.dk"
-                   forge-github-repository))
+(setq flycheck-highlighting-style nil)
 
 (add-hook 'kill-buffer-hook
           (lambda ()
@@ -583,119 +700,28 @@ format a title for a section of code that is comming."
 (setq chatgpt-shell-openai-key (find-api-key "~/.api-keys" "chatgpt"))
 (setq dall-e-shell-openai-key  (find-api-key "~/.api-keys" "chatgpt"))
 
-(require 'ivy)
-(ivy-mode 1)
-(setq ivy-use-virtual-buffers t)
-(setq enable-recursive-minibuffers t)
+(use-package consult :ensure (:wait t))
+(use-package vertico :ensure (:wait t) :init (vertico-mode))
 
-(require 'ivy-posframe)
+(global-set-key (kbd "C-x b") 'consult-buffer)
+(global-set-key (kbd "C-s") 'consult-line)
+(global-set-key (kbd "M-y") 'consult-yank-replace)
+(global-set-key (kbd "C-æ t l") 'consult-theme)
 
-(setq ivy-posframe-display-functions-alist
-      '((swiper          . ivy-posframe-display-at-window-center)
-        (complete-symbol . ivy-posframe-display-at-window-center)
-        (counsel-M-x     . ivy-posframe-display-at-window-center)
-        (t               . ivy-posframe-display)))
+(use-package orderless :ensure (:wait t)
+:custom
+(completion-styles '(orderless basic))
+(completion-category-defaults nil)
+(completion-category-overrides '((file (styles partial-completion)))))
 
-(global-set-key (kbd "C-s") 'swiper)
-
-(ivy-posframe-mode 1)
+(use-package marginalia
+   :ensure (:wait t)
+   :init (marginalia-mode))
 
 (load-theme 'deeper-blue)
 
 (scroll-bar-mode 0)
 (global-yascroll-bar-mode 1)
-
-(require 'svg-tag-mode)
-
-  (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
-  (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
-  (defconst day-re "[A-Za-z]\\{3\\}")
-  (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
-
-  (defun svg-progress-percent (value)
-    (save-match-data
-     (svg-image (svg-lib-concat
-                 (svg-lib-progress-bar  (/ (string-to-number value) 100.0)
-                                   nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
-                 (svg-lib-tag (concat value "%")
-                              nil :stroke 0 :margin 0)) :ascent 'center)))
-
-  (defun svg-progress-count (value)
-    (save-match-data
-      (let* ((seq (split-string value "/"))
-             (count (if (stringp (car seq))
-                        (float (string-to-number (car seq)))
-                      0))
-             (total (if (stringp (cadr seq))
-                        (float (string-to-number (cadr seq)))
-                      1000)))
-        (svg-image (svg-lib-concat
-                    (svg-lib-progress-bar (/ count total) nil
-                                          :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
-                    (svg-lib-tag value nil
-                                 :stroke 0 :margin 0)) :ascent 'center))))
-
-  (setq svg-tag-tags
-        `(
-          ;; Org tags
-          (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
-          (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
-
-          ;; Task priority
-          ("\\[#[A-Z]\\]" . ( (lambda (tag)
-                                (svg-tag-make tag :face 'org-priority
-                                              :beg 2 :end -1 :margin 0))))
-
-          ;; TODO / DONE
-          ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
-          ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
-
-
-          ;; Citation of the form [cite:@Knuth:1984]
-          ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
-                                            (svg-tag-make tag
-                                                          :inverse t
-                                                          :beg 7 :end -1
-                                                          :crop-right t))))
-          ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
-                                                  (svg-tag-make tag
-                                                                :end -1
-                                                                :crop-left t))))
-
-
-          ;; Active date (with or without day name, with or without time)
-          (,(format "\\(<%s>\\)" date-re) .
-           ((lambda (tag)
-              (svg-tag-make tag :beg 1 :end -1 :margin 0))))
-          (,(format "\\(<%s \\)%s>" date-re day-time-re) .
-           ((lambda (tag)
-              (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
-          (,(format "<%s \\(%s>\\)" date-re day-time-re) .
-           ((lambda (tag)
-              (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
-
-          ;; Inactive date  (with or without day name, with or without time)
-           (,(format "\\(\\[%s\\]\\)" date-re) .
-            ((lambda (tag)
-               (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
-           (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
-            ((lambda (tag)
-               (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
-           (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
-            ((lambda (tag)
-               (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))
-
-          ;; ;; Progress
-          ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
-                                              (svg-progress-percent (substring tag 1 -2)))))
-          ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
-                                            (svg-progress-count (substring tag 1 -1)))))
-          ))
-
-(add-hook 'org-mode-hook
-    (lambda ()
-      (org-next-visible-heading 1)
-      (svg-tag-mode 1)))
 
 (doom-modeline-mode 1)
 (add-hook 'after-init-hook #'doom-modeline-mode)
@@ -706,7 +732,13 @@ format a title for a section of code that is comming."
 (set-face-foreground 'mode-line "white")
 (set-face-foreground 'mode-line-buffer-id "green")
 (set-face-background 'mode-line-inactive "#1E1E1E")
-(set-face-foreground 'mode-line-inactive "white")
+(set-face-foreground 'mode-line-inactive "#a83800")
+(set-face-foreground 'doom-modeline-buffer-file "#a83800")
+
+(set-face-attribute 'mode-line nil :box nil)
+(set-face-attribute 'mode-line-inactive nil :box nil)
+
+(setq enable-recursive-minibuffers t)
 
 (setq org-format-latex-options
       '(:foreground default :background default
@@ -728,6 +760,96 @@ format a title for a section of code that is comming."
 
 (keymap-global-set "C-x j" 'today-journal)
 
+(defconst qrt/ss8ch-agent-socket-var "SSH_AUTH_SOCK")
+(defconst qrt/ss8ch-agent-process-id "SSH_AGENT_PID")
+(defconst qrt/ss8ch-agent-search-end "; export")
+
+(defun qrt/ss8ch-find-var-value-in-agent-response
+    (var-name response)
+  "Takes a var-name and the response of calling `ssh-agent` in a
+   shell environment. Finds the value for the given var-name in
+   the given agent response."
+  (save-match-data
+    (if (string-match (concat var-name "=\\([^;]+\\)" qrt/ss8ch-agent-search-end)
+                      response)
+        (match-string 1 response))))
+
+(defun qrt/ss8ch-ensure-agent ()
+  "Checks if the environment contains the pid var for an ssh
+   agent. If not so, starts an ssh-agent process and captures its
+   output the configure the environment."
+  (when (not (getenv qrt/ss8ch-agent-process-id))
+    (let ((agent-response (shell-command-to-string "ssh-agent")))
+      (setenv qrt/ss8ch-agent-socket-var
+              (qrt/ss8ch-find-var-value-in-agent-response
+               qrt/ss8ch-agent-socket-var
+               agent-response))
+      (setenv qrt/ss8ch-agent-process-id
+              (qrt/ss8ch-find-var-value-in-agent-response
+               qrt/ss8ch-agent-process-id
+               agent-response)))
+    (message "ss8ch ~ agent started")))
+
+(defun qrt/ss8ch-handle-passphrase-request (process process-message)
+  "Helper function to handle passphrase requests from the ssh-add
+   process."
+  (save-match-data
+    (if (string-match "passphrase.*:\\s *\\'" process-message)
+        (process-send-string process
+                             (concat (read-passwd process-message) "\n"))
+      (if (not (string-match "^\n+$" process-message))
+          (message (concat "ss8ch ~ " (string-trim process-message)))))))
+
+(defun qrt/ss8ch-find-private-ssh-keys-in (directory)
+  "Returns a list of file paths under directory for private ssh
+   keys."
+  (remove nil (mapcar (lambda (file-name)
+                        (save-match-data
+                          (if (string-match "^\\([^.]+\\)\\.pub$" file-name)
+                              (concat directory (match-string 1 file-name)))))
+                      (directory-files directory))))
+
+(defun qrt/ss8ch-add (key-file)
+  "Checks if an agent is registered in the environment. If not
+   so, an agent is started and registered. Then runs ssh-add to
+   add a key to the running SSH agent, using the minibuffer to
+   ask for the keys passphrase."
+  (interactive
+   (list (completing-read "Select ssh key to add: "
+                          (qrt/ss8ch-find-private-ssh-keys-in "~/.ssh/"))))
+  (qrt/ss8ch-ensure-agent)
+  (let (process)
+    (unwind-protect
+        (progn
+          (setq process (start-process  "ssh-add" nil
+                                        "ssh-add" (expand-file-name key-file)))
+          (set-process-filter process 'qrt/ss8ch-handle-passphrase-request)
+          (while (accept-process-output process)))
+      (if (eq (process-status process) 'run)
+          (kill-process process)))))
+
+(defun qrt/split-window-to-other-buffer-below
+      ()
+    (interactive)
+    (delete-other-windows)
+    (split-window-below)
+    (other-window 1)
+    (let ((switch-to-prev-buffer-skip 'visible))
+      (switch-to-next-buffer)))
+
+  (global-set-key (kbd "C-æ 2") 'qrt/split-window-to-other-buffer-below)
+
+  (defun qrt/split-window-to-other-buffer-right
+      ()
+    (interactive)
+        (delete-other-windows)
+    (split-window-right)
+    (other-window 1)
+    (let ((switch-to-prev-buffer-skip 'visible))
+      (switch-to-next-buffer)))
+
+  (global-set-key (kbd "C-æ 3") 'qrt/split-window-to-other-buffer-right)
+
 (global-set-key (kbd "C-z") 'set-mark-command)
 (global-set-key [C-tab] 'other-window)
 (global-set-key (kbd "RET") 'newline-and-indent)
@@ -741,5 +863,15 @@ format a title for a section of code that is comming."
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
 (global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
-(global-set-key (kbd "C-æ r") 'lsp-find-references)
 (global-set-key (kbd "C-æ f") 'ranger)
+(global-set-key (kbd "C-æ g") 'rgrep)
+(global-set-key (kbd "C-æ r") 'lsp-find-references)
+(global-set-key (kbd "C-æ s") 'lsp-ui-find-workspace-symbol)
+(global-set-key (kbd "C-æ t") 'org-todo-list)
+
+(global-set-key (kbd "C-s-p") 'org-todo)
+
+(global-set-key (kbd "C-|") (lambda () (interactive)
+                               (insert "\\")))
+
+(add-hook 'elpaca-after-init-hook (lambda () (setq warning-minimum-level :warning)))
