@@ -1441,6 +1441,23 @@ If you want to keep a simple day-journal, this will make that happen
           (kill-process process)))))
 #+end_src
 
+** Quick search with Avy
+
+#+begin_src elisp :tangle ~/.emacs
+(use-package avy :ensure (:wait t)
+ :init (setq avy-timeout-seconds 0.3))
+#+end_src
+
+** No woman no poll
+
+This sometimes break updates in buffers after they receive input from the outside, ie. they do not refresh.
+
+#+begin_src elisp :tangle ~/.emacs
+(setq auto-revert-avoid-polling t
+      global-auto-revert-ignore-modes '(compilation-mode)
+      global-auto-revert-non-file-buffers t)
+#+end_src
+
 ** Window splitting
 
 Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't use the delete-windows command
@@ -1492,6 +1509,8 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (global-set-key (kbd "C-æ t") 'org-todo-list)
 
   (global-set-key (kbd "C-s-p") 'org-todo)
+  (global-set-key (kbd "C-æ F") 'project-find-file)
+  (global-set-key (kbd "C-æ C-æ") 'avy-goto-char-timer)
 #+end_src
 
 Using 65% keyboards is a beautiful thing, but not without issues
