@@ -1182,6 +1182,7 @@ better by mixing with deeper-blue
 
 #+begin_src elisp :tangle ~/.emacs
   (load-theme 'deeper-blue)
+  (load-theme 'doom-one t)
 #+end_src
 
 Emacs own scrollbars are bulky, this replaces them with ya-scrollbar
