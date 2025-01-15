@@ -1303,17 +1303,6 @@ A beautiful mode-line consists of many unicode icons and dampened colors
   (doom-modeline-mode 1)
   (add-hook 'after-init-hook #'doom-modeline-mode)
   (setq mood-line-glyph-alist mood-line-glyphs-fira-code)
-  (set-face-attribute 'region nil :background "#666")
-
-  (set-face-background 'mode-line "#11131b")
-  (set-face-foreground 'mode-line "white")
-  (set-face-foreground 'mode-line-buffer-id "green")
-  (set-face-background 'mode-line-inactive "#1E1E1E")
-  (set-face-foreground 'mode-line-inactive "#a83800")
-  (set-face-foreground 'doom-modeline-buffer-file "#a83800")
-
-  (set-face-attribute 'mode-line nil :box nil)
-  (set-face-attribute 'mode-line-inactive nil :box nil)
 #+end_src
 
 * Minibuffer
@@ -1525,6 +1514,25 @@ Using 65% keyboards is a beautiful thing, but not without issues
 
 * Finally
 
+These faces in the mode-line are changed by themes, putting this last overwrites.
+
 #+begin_src elisp :tangle ~/.emacs
 ;(add-hook 'elpaca-after-init-hook (lambda () (setq warning-minimum-level :warning)))
+
+  (set-face-attribute 'region nil :background "#666")
+
+  (set-face-background 'mode-line "#11131b")
+  (set-face-foreground 'mode-line "white")
+  (set-face-foreground 'mode-line-buffer-id "green")
+  (set-face-background 'mode-line-inactive "#1E1E1E")
+  (set-face-foreground 'mode-line-inactive "#a83800")
+  (set-face-foreground 'doom-modeline-buffer-file "#a83800")
+
+  (set-face-attribute 'mode-line nil :box nil)
+  (set-face-attribute 'mode-line-inactive nil :box nil)
+
+(global-set-key (kbd "C-h") (lambda () (interactive)
+                               (insert "(")))
+(global-set-key (kbd "C-j") (lambda () (interactive)
+                               (insert ")")))
 #+end_src
