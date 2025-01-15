@@ -514,7 +514,7 @@ After have tried many fonts, Iosevka seems to be optimal for readability.
 It's available on Arch via ~yay ttf-iosevka~ and OSX via Brew.
 
 #+begin_src elisp :tangle ~/.emacs
-(set-frame-font "iosevka 15")
+(set-frame-font "iosevka 14")
 (set-face-attribute 'default nil :weight 'light)
 #+end_src
 
@@ -1506,7 +1506,6 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
 
   (global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
   (global-set-key (kbd "C-æ f") 'ranger)
-  (global-set-key (kbd "C-æ g") 'rgrep)
   (global-set-key (kbd "C-æ r") 'lsp-find-references)
   (global-set-key (kbd "C-æ s") 'lsp-ui-find-workspace-symbol)
   (global-set-key (kbd "C-æ t") 'org-todo-list)
@@ -1514,6 +1513,7 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (global-set-key (kbd "C-s-p") 'org-todo)
   (global-set-key (kbd "C-æ F") 'project-find-file)
   (global-set-key (kbd "C-æ C-æ") 'avy-goto-char-timer)
+  (global-set-key (kbd "C-æ g") 'consult-grep)
 #+end_src
 
 Using 65% keyboards is a beautiful thing, but not without issues
