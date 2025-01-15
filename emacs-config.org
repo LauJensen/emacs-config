@@ -1069,6 +1069,8 @@ When a buffer is killed while `lsp-mode` is active, this hook modifies the globa
                                          '(cancel-callback method buf hook workspaces id)
                                          (-map #'car (cadr it))))))
                          (default-value 'post-command-hook))))))
+
+(setq lsp-headerline-breadcrumb-enable-diagnostics nil) ;; No need for ugliness
   #+end_src
 
 Decide, d2 or mermaid?
