@@ -895,7 +895,10 @@ Enable the following to automatically fix :as statements when saving
     (save-excursion
       (goto-char (point-min))
       (mark-sexp)
-      (align-as))
+      (when (cl-search ":as" (buffer-substring
+                              (region-beginning)
+                              (region-end)))
+        (align-as)))
     (deactivate-mark)))
 
 (add-hook 'write-file-hooks 'align-namespace)
