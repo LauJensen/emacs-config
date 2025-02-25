@@ -347,7 +347,6 @@ nodes. Discover or create with ~C-c n f~
   (use-package d2-mode             :ensure (:wait t))
   (use-package chatgpt-shell       :ensure (:wait t))
   (use-package ranger              :ensure (:wait t))
-  (use-package idle-highlight-mode :ensure (:wait t))
   (use-package pdf-tools           :ensure (:wait t))
   (use-package svg-lib             :ensure (:wait t))
 ;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
@@ -377,8 +376,7 @@ nodes. Discover or create with ~C-c n f~
     (add-hook 'clojure-mode-hook #'clojure-mode-extra-font-locking)
     (add-hook 'clojure-mode-hook #'eldoc-mode)
     (add-hook 'clojure-mode-hook #'lsp)
-    (add-hook 'clojure-mode-hook #'flycheck-mode)
-    (add-hook 'clojure-mode-hook #'idle-highlight-mode))
+    (add-hook 'clojure-mode-hook #'flycheck-mode))
 
   (use-package clojure-mode-extra-font-locking
   :after clojure-mode
