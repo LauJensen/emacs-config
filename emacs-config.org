@@ -62,6 +62,8 @@ Make sure Emacs can access Elpa and our manually added resources and tools
 TODO: Change to your local home folder, /Users for non-nix users
 
 #+begin_src elisp :tangle ~/.emacs
+;; -*- lexical-binding: t; -*-
+
 (defun ensure-folder-exists (folder)
   "Ensure that the folder named FOLDER exists. If it does not exist, create it."
   (unless (file-directory-p folder)
@@ -72,6 +74,7 @@ TODO: Change to your local home folder, /Users for non-nix users
 (add-to-list 'load-path "/home/lau/.emacs.d/elpa/")
 (add-to-list 'load-path "/home/lau/.emacs.d/svg-tag-mode/")
 (add-to-list 'exec-path "/home/lau/bin/")
+
 #+end_src
 
 For the fastest possible start-up (this was relevant 15 years ago)  Emacs can compile all .el files when quitting and simply load these on start-up. This is much faster than evaluating .el files but if you manually patch something in these .el files, those changes will not always be picked up, which is why I disabled this.
@@ -101,12 +104,13 @@ Elpaca is a fast parallelized package-manager which has strict dependency handli
 #+begin_src elisp :tangle ~/.emacs
 (setq package-enable-at-startup nil)
 (setq warning-minimum-level :error)
+(require 'cl-lib)
 #+end_src
 
-Actual installation/initialization:
+Older installation/initialization:
 
-#+begin_src elisp :tangle ~/.emacs
-(defvar elpaca-installer-version 0.8)
+#+begin_src elisp
+(defvar elpaca-installer-version 0.11)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
 (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
@@ -151,6 +155,52 @@ Actual installation/initialization:
 
 #+end_src
 
+Current elpaca installation
+
+#+begin_src elisp :tangle ~/.emacs
+  (defvar elpaca-installer-version 0.11)
+  (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+  (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+  (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+  (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                                :ref nil :depth 1 :inherit ignore
+                                :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                                :build (:not elpaca--activate-package)))
+  (let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+         (build (expand-file-name "elpaca/" elpaca-builds-directory))
+         (order (cdr elpaca-order))
+         (default-directory repo))
+    (add-to-list 'load-path (if (file-exists-p build) build repo))
+    (unless (file-exists-p repo)
+      (make-directory repo t)
+      (when (<= emacs-major-version 28) (require 'subr-x))
+      (condition-case-unless-debug err
+          (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                    ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                    ,@(when-let* ((depth (plist-get order :depth)))
+                                                        (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                    ,(plist-get order :repo) ,repo))))
+                    ((zerop (call-process "git" nil buffer t "checkout"
+                                          (or (plist-get order :ref) "--"))))
+                    (emacs (concat invocation-directory invocation-name))
+                    ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                          "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                    ((require 'elpaca))
+                    ((elpaca-generate-autoloads "elpaca" repo)))
+              (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+            (error "%s" (with-current-buffer buffer (buffer-string))))
+        ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+    (unless (require 'elpaca-autoloads nil t)
+      (require 'elpaca)
+      (elpaca-generate-autoloads "elpaca" repo)
+      (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
+  (add-hook 'after-init-hook #'elpaca-process-queues)
+  (elpaca `(,@elpaca-order))
+
+  (elpaca elpaca-use-package
+  ;; Enable use-package :ensure support for Elpaca.
+    (elpaca-use-package-mode))
+#+end_src
 
 
 * Globals
@@ -163,7 +213,7 @@ All the special folders and files are referenced here:
 
 (setq my-backup-folder "/home/lau/Documents/EmacsBackups")
 (setq my-exec-path     "/home/lau/bin")
-(setq my-roam-folder   "~/Documents/Roam")
+(setq my-roam-folder   (expand-file-name "~/Documents/Roam"))
 #+end_src
 
 I mostly browse to read Javadocs, so Eww makes sense:
@@ -178,7 +228,7 @@ We add ido to quickly navigate to files we've previously visisted in ~C-x f~ nav
 
 #+begin_src elisp :tangle ~/.emacs
   (put 'erase-buffer 'disabled nil)
-  (autoload 'ido "ido.el")
+  ;(autoload 'ido "ido.el")
 #+end_src
 
 Typing 'yes' and 'no' gets tedious
@@ -191,14 +241,14 @@ These are fairly self-explanatory defaults which make sure that we have
 uninterrupted view of our code.
 
 #+begin_src elisp :tangle ~/.emacs
-  (ido-mode 'both)  ; User ido mode for both buffers and files
+;  (ido-mode 'both)  ; User ido mode for both buffers and files
   (setq backup-directory-alist '(("." . "/home/lau/Documents/EmacsBackups")))
   (setq x-select-enable-clipboard t) ; Integrate with X11s clipboard
   (global-font-lock-mode 1) ;; Enable syntax highlighting when editing code.
   (show-paren-mode 1) ; Highlight the matching paren
   (tool-bar-mode -1)  ; Remove bloat
   (menu-bar-mode -1)  ; --- || ---
-  (setq transient-mark-mode t) ; Highlight selected regions
+  (transient-mark-mode 1) ; Highlight selected regions
   (setq visible-bell t)        ; Flash program border on beep
   (setq inhibit-startup-screen t) ; Dont load the about screen on load
   (setq scroll-step 1)            ; Only scroll down 1 line at a time
@@ -212,11 +262,14 @@ uninterrupted view of our code.
   (setq scroll-step            1
         scroll-conservatively  10000)
 
-  (pixel-scroll-precision-mode)
+  (when (fboundp 'pixel-scroll-precision-mode)
+    (pixel-scroll-precision-mode))
 
-  (setenv "PATH" (concat (getenv "PATH") ":/usr/local/bin"))
-  (setq exec-path (append exec-path '("/usr/local/bin")))
-  (setq exec-path (add-to-list 'exec-path my-exec-path))
+
+  (dolist (p '("/usr/local/bin" "/home/lau/bin"))
+     (add-to-list 'exec-path p)
+     (setenv "PATH" (concat p ":" (getenv "PATH"))))
+
 
   (setq tab-always-indent 'complete)
 
@@ -240,17 +293,17 @@ If you ever find yourself trapped on a Mac, you'll find these helpful
 
 We want to use Firefox by default.
 
-TODO Change to your browser of choice
+TODO Change to your browser of choice - Using eww
 
 #+begin_src elisp :tangle ~/.emacs
-  (setq browse-url-browser-function 'browse-url-generic
-        browse-url-generic-program "/usr/bin/firefox")
+;  (setq browse-url-browser-function 'browse-url-generic
+;        browse-url-generic-program "/usr/bin/firefox")
 #+end_src
 
 When saving a file, we want to trim empty newlines and trailing whitespace
 
 #+begin_src elisp :tangle ~/.emacs
-  (add-hook 'write-file-hooks 'delete-trailing-whitespace)
+  (add-hook 'before-save-hook #'delete-trailing-whitespace)
 #+end_src
 
 Keep a reasonable amount of backups. Better safe than sorry.
@@ -263,7 +316,7 @@ Keep a reasonable amount of backups. Better safe than sorry.
    kept-old-versions   2
    version-control     t)
 
-   (setq create-lockfiles nil)
+  (setq create-lockfiles nil)
 #+end_src
 
 * Packages / ELPA
@@ -304,15 +357,16 @@ is if your GPG keys are so outdated that you can't even install gnu-elpa-keyring
 #+begin_src elisp :tangle ~/.emacs
 ;(setq package-check-signature nil)
 
-(setq package-archives
-      '(("gnu" . "https://elpa.gnu.org/packages/")
-        ("melpa" . "https://melpa.org/packages/")))
+;; Commented to give preference to elpaca
+;(setq package-archives
+;      '(("gnu" . "https://elpa.gnu.org/packages/")
+;        ("melpa" . "https://melpa.org/packages/")))
 
-(package-initialize)
+;;(package-initialize)
 
-(when (not (package-installed-p 'use-package))
-   (package-refresh-contents)
-   (package-install 'use-package))
+;;(when (not (package-installed-p 'use-package))
+;;   (package-refresh-contents)
+;;   (package-install 'use-package))
 #+end_src
 
 These packages make Emacs beautiful, efficient and ready for Clojure and Javascript
@@ -331,54 +385,64 @@ org-roam is used for managing multiple related (and unrelated) notes across
 nodes. Discover or create with ~C-c n f~
 
 #+begin_src elisp :tangle ~/.emacs
-  (use-package unicode-fonts       :ensure (:wait t))
+  (use-package unicode-fonts
+    :ensure (:wait t)
+    :config
+    (unicode-fonts-setup)
+    ;; After unicode-fonts has done its thing, force Nerd Font for PUA ranges.
+    (when (member "Symbols Nerd Font Mono" (font-family-list))
+      (let ((nerd (font-spec :family "Symbols Nerd Font Mono")))
+        ;; Main Private Use Area
+        (set-fontset-font t '(#xE000 . #xF8FF) nerd nil 'prepend)
+        ;; Supplementary PUAs (some Nerd glyphs live here too)
+        (set-fontset-font t '(#xF0000 . #xFFFFD) nerd nil 'prepend)
+        (set-fontset-font t '(#x100000 . #x10FFFD) nerd nil 'prepend))))
+
   (use-package nerd-icons          :ensure (:wait t))
   (use-package all-the-icons       :ensure (:wait t))
   (use-package doom-modeline       :ensure (:wait t))
-  (use-package k8s-mode            :ensure (:wait t))
+  ;;(use-package k8s-mode            :ensure (:wait t))
   (use-package ejc-sql             :ensure (:wait t))
   (use-package mood-line           :ensure (:wait t))
   (use-package yascroll            :ensure (:wait t))
-  (use-package auto-complete       :ensure (:wait t))
+  ;;  (use-package auto-complete       :ensure (:wait t))
   (use-package transient           :ensure (:wait t))
   (use-package magit               :ensure (:wait t) :after transient)
   (use-package flycheck            :ensure (:wait t))
   (use-package flycheck-clj-kondo  :ensure (:wait t))
-  (use-package d2-mode             :ensure (:wait t))
-  (use-package chatgpt-shell       :ensure (:wait t))
+  ;;(use-package d2-mode             :ensure (:wait t))
+  ;;(use-package chatgpt-shell       :ensure (:wait t))
   (use-package ranger              :ensure (:wait t))
-  (use-package pdf-tools           :ensure (:wait t))
-  (use-package svg-lib             :ensure (:wait t))
-;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
+  ;;(use-package pdf-tools           :ensure (:wait t))
+  ;;(use-package svg-lib             :ensure (:wait t))
+  ;;  (use-package forge               :ensure (:wait t) :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
 
   ;; With configs
 
   (use-package markdown-mode
-  :ensure (:wait t)
-  :mode ("README\\.md\\'" . gfm-mode)
-  :init (setq markdown-command "multimarkdown"))
-
-  (use-package jinx
     :ensure (:wait t)
-    :hook (emacs-startup . global-jinx-mode)
-    :bind (("M-$" . jinx-correct)
-           ("C-M-$" . jinx-languages)))
+    :mode ("README\\.md\\'" . gfm-mode)
+    :init (setq markdown-command "multimarkdown"))
+
+;;  (use-package jinx
+;;    :ensure (:wait t)
+;;    :hook (emacs-startup . global-jinx-mode)
+;;    :bind (("M-$" . jinx-correct)
+;;           ("C-M-$" . jinx-languages)))
 
   (use-package clojure-mode
-    :ensure (:wait t)
+    :ensure t
     :mode (("\\.clj\\'" . clojure-mode)
-           ("\\.cljs\\'" . clojure-mode)
            ("\\.cljd\\'" . clojure-mode)
            ("\\.cljc\\'" . clojure-mode)
            ("\\.edn\\'" . clojure-mode))
     :init
     (add-hook 'clojure-mode-hook #'subword-mode)
     (add-hook 'clojure-mode-hook #'eldoc-mode)
-    (add-hook 'clojure-mode-hook #'lsp)
     (add-hook 'clojure-mode-hook #'flycheck-mode))
 
   (use-package cider
-    :ensure (:wait t)
+    :ensure t
     :after clojure-mode
     :defer t
     :diminish subword-mode
@@ -452,43 +516,44 @@ nodes. Discover or create with ~C-c n f~
     :hook (org-mode . org-fragtog-mode))
 
   (use-package org-bullets
-  :ensure (:wait t)
-  :after org
-  :hook (org-mode . org-bullets-mode))
+    :ensure (:wait t)
+    :after org
+    :hook (org-mode . org-bullets-mode))
 
   (use-package doom-themes
-  :ensure (:wait t)
-  :config
-  ;; Global settings (defaults)
-  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-        doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-gruvbox t)
-  (load-theme 'doom-Iosvkem t)
-  (load-theme 'doom-dracula t)
-
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-  ;; or for treemacs users
-  (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
-  (doom-themes-treemacs-config)
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config))
+    :ensure (:wait t)
+    :config
+    ;; Global settings (defaults)
+    (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+          doom-themes-enable-italic t) ; if nil, italics is universally disabled
+    (load-theme 'doom-one t)
 
 
-                                          ;(require 'unicode-fonts)
-  (require 'nerd-icons)
-  (require 'doom-modeline)
-  (require 'package)
-  (require 'k8s-mode)
+
+    ;; Enable flashing mode-line on errors
+    (doom-themes-visual-bell-config)
+    ;; or for treemacs users
+    (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
+    (doom-themes-treemacs-config)
+    ;; Corrects (and improves) org-mode's native fontification.
+    (doom-themes-org-config))
+
+
+  ;; These are loaded by elpaca now
+  ;;  (require 'unicode-fonts)
+  ;;  (require 'nerd-icons)
+  ;;  (require 'doom-modeline)
+  ;;  (require 'package)
+  ;;  (require 'k8s-mode)
 #+end_src
 
 For completion we use company mode in the back and Corfu in the front
 
 #+begin_src elisp :tangle ~/.emacs
-(use-package company             :ensure (:wait t)
-    :init
-    (setq company-minimum-prefix-length 1
-          company-idle-delay 0.8)) ;; default is 0.2
+;;(use-package company             :ensure (:wait t)
+;;    :init
+;;    (setq company-minimum-prefix-length 1
+;;          company-idle-delay 0.8)) ;; default is 0.2
 
 (use-package corfu
   :ensure (:wait t)
@@ -502,9 +567,11 @@ After have tried many fonts, Iosevka seems to be optimal for readability.
 It's available on Arch via ~yay ttf-iosevka~ and OSX via Brew.
 
 #+begin_src elisp :tangle ~/.emacs
-(set-frame-font "iosevka 14")
+(set-frame-font "iosevka 13")
 (set-face-attribute 'default nil :weight 'light)
 #+end_src
+
+
 
 By default Emacs stops the cursor from blinking after 10 blinks, this
 keeps the lights on forever
@@ -520,9 +587,9 @@ ediff can be very intuitive to read if put side-by-side:
       ediff-window-setup-function 'ediff-setup-windows-plain)
 #+end_src
 
-Avoid gaps when resizing
+Avoid gaps when resizing (untangled, goes in early-init.el)
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
 (setq frame-resize-pixelwise t)
 #+end_src
 
@@ -532,12 +599,11 @@ Highlight the currently active line
 (global-hl-line-mode 1)
 #+end_src
 
-
-* Slides
+* Slides (disable)
 
 10/10 users choose org-tree-slide over Powerpoint, every time
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
 (use-package org-tree-slide :ensure (:wait t))
 
 (defun qrt/font-size (s)
@@ -606,11 +672,11 @@ Highlight the currently active line
 (add-hook 'org-tree-slide-stop-hook #'qrt/finish-org-tree-slide)
 #+end_src
 
-* SQL
+* SQL (disabled 0.5)
 
 Enable EJC but not autocomplete, which seems to be more trouble than its worth
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
 (require 'ejc-sql)
 ;(require 'ejc-autocomplete)
 (add-hook 'ejc-sql-minor-mode-hook
@@ -696,7 +762,7 @@ org-mode is quicker to navigate with speed-keys enable, ie. hit "n" at the start
 
 org source blocks can compile directly if they are added to babel.
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
   (setq org-startup-indented t)
 
   (use-package ob-d2 :ensure (:wait t) :after d2-mode)
@@ -708,8 +774,7 @@ org source blocks can compile directly if they are added to babel.
 
   (org-babel-do-load-languages
       'org-babel-load-languages
-      '((d2 . t)
-        (scheme . t)))
+      '((d2 . t)))
 
   (setq org-confirm-babel-evaluate nil)
   (add-to-list 'image-types 'svg)
@@ -719,7 +784,7 @@ org has an annoying bug where opening a code-block of type bash will kill your
 cursor permanently, this is a workaround:
 
 #+begin_src elisp :tangle ~/.emacs
-  (setq org-src-tab-acts-natively nil)
+  (setq org-src-tab-acts-natively t)
 #+end_src
 
 org has its own opinions on fonts and font-sizes. This attempts to streamline and
@@ -782,7 +847,7 @@ These functions are fairly self-explanatory
     (interactive "Find file as sudo: ")
     (find-file (concat find-file-root-prefix file)))
 
-  (defun find-file-smb(file)
+  (defun find-file-smb (file)
     "Access file through samba protocol."
     (interactive "fFind file as samba: ")
     (find-file (concat "/smb:" file)))
@@ -801,10 +866,10 @@ These functions are fairly self-explanatory
 
   (defun revert-all-buffers ()
     "Refresh all open file buffers without confirmation.
-      Buffers in modified (not yet saved) state in emacs will not be reverted. They
-      will be reverted though if they were modified outside emacs.
-      Buffers visiting files which do not exist any more or are no longer readable
-      will be killed."
+        Buffers in modified (not yet saved) state in emacs will not be reverted. They
+        will be reverted though if they were modified outside emacs.
+        Buffers visiting files which do not exist any more or are no longer readable
+        will be killed."
     (interactive)
     (dolist (buf (buffer-list))
       (let ((filename (buffer-file-name buf)))
@@ -822,7 +887,7 @@ These functions are fairly self-explanatory
               (message "Killed non-existing/unreadable file buffer: %s" filename))))))
     (message "Finished reverting buffers containing unmodified files."))
 
-(defun rightmost-as ()
+  (defun rightmost-as ()
     (interactive)
     (let ((start  (region-beginning))
           (end    (region-end))
@@ -839,38 +904,38 @@ These functions are fairly self-explanatory
       (message "max column %d" max-col)
       (- max-col 3)))
 
-(defun insert-spaces
-   (n)
-   (interactive)
-   (while (> n 0)
+  (defun insert-spaces
+      (n)
+    (interactive)
+    (while (> n 0)
       (insert " ")
       (setq n (- n 1))))
 
-(defun align-as ()
-  (interactive)
-  (if (use-region-p)
-      (let ((start (region-beginning))
-            (end (region-end))
-            (break nil)
-            (rightmost (rightmost-as)))
-        (message "The region is active, and is from %d to %d, padding to %d"
-                 start end rightmost)
-        (save-excursion
-          (goto-char start)
-          (while (< (point) end)
-            (message "Point is %d" (point))
-            (beginning-of-line)
-            (if (or break (search-forward ":as" end t))
-                (progn
-                  (backward-word)
-                  (backward-char)
-                  (setq end (+ end (- rightmost (current-column))))
-                  (insert-spaces (- rightmost (current-column)))
-                  (forward-line 1)
-                  (message "Point is %d" (point)))
-              ;; If ":as" is not found, exit the loop
-              (setq break t)))))
-    (message "nothing selected")))
+  (defun align-as ()
+    (interactive)
+    (if (use-region-p)
+        (let ((start (region-beginning))
+              (end (region-end))
+              (break nil)
+              (rightmost (rightmost-as)))
+          (message "The region is active, and is from %d to %d, padding to %d"
+                   start end rightmost)
+          (save-excursion
+            (goto-char start)
+            (while (< (point) end)
+              (message "Point is %d" (point))
+              (beginning-of-line)
+              (if (or break (search-forward ":as" end t))
+                  (progn
+                    (backward-word)
+                    (backward-char)
+                    (setq end (+ end (- rightmost (current-column))))
+                    (insert-spaces (- rightmost (current-column)))
+                    (forward-line 1)
+                    (message "Point is %d" (point)))
+                ;; If ":as" is not found, exit the loop
+                (setq break t)))))
+      (message "nothing selected")))
 #+end_src
 
 Enable the following to automatically fix :as statements when saving
@@ -889,7 +954,9 @@ Enable the following to automatically fix :as statements when saving
         (align-as)))
     (deactivate-mark)))
 
-(add-hook 'write-file-hooks 'align-namespace)
+(add-hook 'clojure-mode-hook
+   (lambda ()
+     (add-hook 'before-save-hook #'align-namespace nil t)))
 #+end_src
 
 The following is a helper for .dir-locals which imports everything
@@ -921,7 +988,7 @@ so that you can access your AWS environment from your REPL.
 
 Sometimes you just need a pretty header comment, stolen from Kurt Heyrman
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
 (defun qrt/wrap-in-comment-header ()
   "Takes the line at point, upcases it, and wraps it in a formatted
 comment (lisp style, ie. with ;;). Can for example be used to
@@ -944,16 +1011,14 @@ format a title for a section of code that is comming."
     (move-end-of-line nil)
     (setq end (point))
     (comment-region beg end)))
-
-(global-set-key (kbd "C-æ c") 'qrt/wrap-in-comment-header)
 #+end_src
 
 The following is an aid for chatgpt-shell. If you've had a meaningful conversation,
-save it by running ~save-chat~
+save it by running ~save-chat~ (disabled)
 
 TODO: Change Documents folder if needed
 
-#+begin_src elisp :tangle ~/.emacs
+#+begin_src elisp
   (defun find-first-nonexistent-filename (filename)
     (let ((i 1))
       (while (and (< i 101)
@@ -982,7 +1047,8 @@ In addition we wan't to supress nrepls own buffers.
   (setq cider-inject-dependencies-at-jack-in t)
 
   (setq nrepl-hide-special-buffers t)
-  (setq cider-show-error-buffer nil); 'only-in-repl)
+  (setq cider-show-error-buffer nil)
+  ;; 'only-in-repl
   (setq cider-auto-select-error-buffer nil)
   (setq cider-repl-display-help-banner nil)
 #+end_src
@@ -1041,22 +1107,44 @@ Github/Gitlab instances and any auth info should be added to ~/.authinfo
                      forge-github-repository))
 #+end_src
 
+* Rust
+
+Install rust-mode and prepare for eglot support:
+
+#+begin_src elisp :tangle ~/.emacs
+(use-package tree-sitter-langs :ensure (:wait t))
+
+(use-package tree-sitter
+  :ensure (:wait t)
+  :config
+  (require 'tree-sitter-langs)
+  (global-tree-sitter-mode)
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+
+(use-package rust-mode
+  :ensure (:wait t)
+  :init
+  (setq rust-mode-treesitter-derive t))
+#+end_src
+
 * LSP (Clojure)
 
 When a buffer is killed while `lsp-mode` is active, this hook modifies the global `post-command-hook` to remove certain closures, specifically those that are related to `lsp-mode` operations indicated by their environment variables (`cancel-callback`, `method`, `buf`, `hook`, `workspaces`, `id`). This might be used to clean up or reset state associated with `lsp-mode` in hooks that could interfere with or are no longer relevant after buffers are closed
 
 #+begin_src elisp :tangle ~/.emacs
-(add-hook 'kill-buffer-hook
-          (lambda ()
-            (when (bound-and-true-p lsp-mode)
-              (setq-default
-               post-command-hook
-               (--filter (not (and (consp it)
-                                   (eq (car it) 'closure)
-                                   (not (-difference
-                                         '(cancel-callback method buf hook workspaces id)
-                                         (-map #'car (cadr it))))))
-                         (default-value 'post-command-hook))))))
+(use-package dash :ensure (:wait t))
+
+;(add-hook 'kill-buffer-hook
+;          (lambda ()
+;            (when (bound-and-true-p lsp-mode)
+;              (setq-default
+;               post-command-hook
+;               (--filter (not (and (consp it)
+;                                   (eq (car it) 'closure)
+;                                   (not (-difference
+;                                         '(cancel-callback method buf hook workspaces id)
+;                                         (-map #'car (cadr it))))))
+;                         (default-value 'post-command-hook))))))
 
 (setq lsp-headerline-breadcrumb-enable-diagnostics nil) ;; No need for ugliness
   #+end_src
@@ -1106,13 +1194,13 @@ just create ~/.api-keys and add 2 lines: "chatgpt" and "<your api key>"
   (global-set-key (kbd "C-æ t l") 'consult-theme)
 
   (use-package orderless :ensure (:wait t)
-  :custom
-  (completion-styles '(orderless basic))
-  (completion-category-defaults nil)
-  (completion-category-overrides '((file (styles partial-completion)))))
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles partial-completion)))))
 #+end_src
 
-* Ivy
+* Ivy (disabled)
 
 *Disabled*: This interferes with consult
 
@@ -1154,24 +1242,24 @@ The themes used in this file make ivy-posframe searching, especially
 between buffers, a bit hard to read. Maximum visibility
 
 #+begin_src elisp
-(set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
+  (set-face-attribute 'ivy-current-match nil :foreground "white" :background "red")
 #+end_src
 
 To add a bit more information to search-bars, we use Marginalia
 
 #+begin_src elisp :tangle ~/.emacs
-(use-package marginalia
-   :ensure (:wait t)
-   :init (marginalia-mode))
+  (use-package marginalia
+    :ensure (:wait t)
+    :init (marginalia-mode))
 #+end_src
 
 * Beautification
 
 We load the theme timu-rouge, which is superb. But we can make it even
-better by mixing with deeper-blue
+better by mixing with deeper-blue (disabled)
 
-#+begin_src elisp :tangle ~/.emacs
-  (load-theme 'deeper-blue)
+#+begin_src elisp
+ (load-theme 'deeper-blue)
   (load-theme 'doom-one t)
 #+end_src
 
@@ -1190,100 +1278,101 @@ bar, svg generated. Its quite hot and comes from the author of Nano.
 Disabled by default
 
 #+begin_src elisp
-    (require 'svg-tag-mode)
+      (require 'svg-tag-mode)
 
-    (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
-    (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
-    (defconst day-re "[A-Za-z]\\{3\\}")
-    (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
+      (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
+      (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
+      (defconst day-re "[A-Za-z]\\{3\\}")
+      (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
 
-    (defun svg-progress-percent (value)
-      (save-match-data
-       (svg-image (svg-lib-concat
-                   (svg-lib-progress-bar  (/ (string-to-number value) 100.0)
-                                     nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
-                   (svg-lib-tag (concat value "%")
-                                nil :stroke 0 :margin 0)) :ascent 'center)))
+      (defun svg-progress-percent (value)
+        (save-match-data
+         (svg-image (svg-lib-concat
+                     (svg-lib-progress-bar  (/ (string-to-number value) 100.0)
+                                       nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                     (svg-lib-tag (concat value "%")
+                                  nil :stroke 0 :margin 0)) :ascent 'center)))
 
-    (defun svg-progress-count (value)
-      (save-match-data
-        (let* ((seq (split-string value "/"))
-               (count (if (stringp (car seq))
-                          (float (string-to-number (car seq)))
-                        0))
-               (total (if (stringp (cadr seq))
-                          (float (string-to-number (cadr seq)))
-                        1000)))
-          (svg-image (svg-lib-concat
-                      (svg-lib-progress-bar (/ count total) nil
-                                            :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
-                      (svg-lib-tag value nil
-                                   :stroke 0 :margin 0)) :ascent 'center))))
+      (defun svg-progress-count (value)
+        (save-match-data
+          (let* ((seq (split-string value "/"))
+                 (count (if (stringp (car seq))
+                            (float (string-to-number (car seq)))
+                          0))
+                 (total (if (stringp (cadr seq))
+                            (float (string-to-number (cadr seq)))
+                          1000)))
+            (svg-image (svg-lib-concat
+                        (svg-lib-progress-bar (/ count total) nil
+                                              :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                        (svg-lib-tag value nil
+                                     :stroke 0 :margin 0)) :ascent 'center))))
 
-    (setq svg-tag-tags
-          `(
-            ;; Org tags
-            (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
-            (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
+      (setq svg-tag-tags
+            `(
+              ;; Org tags
+              (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
+              (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
 
-            ;; Task priority
-            ("\\[#[A-Z]\\]" . ( (lambda (tag)
-                                  (svg-tag-make tag :face 'org-priority
-                                                :beg 2 :end -1 :margin 0))))
+              ;; Task priority
+              ("\\[#[A-Z]\\]" . ( (lambda (tag)
+                                    (svg-tag-make tag :face 'org-priority
+                                                  :beg 2 :end -1 :margin 0))))
 
-            ;; TODO / DONE
-            ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
-            ("BLOCKED" . ((lambda (tag) (svg-tag-make "BLOCKED" :face 'ivy-current-match :margin 0))))
-            ("HOLD" . ((lambda (tag) (svg-tag-make "HOLD" :face 'abbrev-table-name :margin 0))))
-            ("CANCELLED" . ((lambda (tag) (svg-tag-make "CANCELLED" :face 'ivy-current-match :margin 0))))
-            ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
-
-
-            ;; Citation of the form [cite:@Knuth:1984]
-            ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
-                                              (svg-tag-make tag
-                                                            :inverse t
-                                                            :beg 7 :end -1
-                                                            :crop-right t))))
-            ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
-                                                    (svg-tag-make tag
-                                                                  :end -1
-                                                                  :crop-left t))))
+              ;; TODO / DONE
+              ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
+              ("BLOCKED" . ((lambda (tag) (svg-tag-make "BLOCKED" :face 'ivy-current-match :margin 0))))
+              ("HOLD" . ((lambda (tag) (svg-tag-make "HOLD" :face 'abbrev-table-name :margin 0))))
+              ("CANCELLED" . ((lambda (tag) (svg-tag-make "CANCELLED" :face 'ivy-current-match :margin 0))))
+              ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
 
 
-            ;; Active date (with or without day name, with or without time)
-            (,(format "\\(<%s>\\)" date-re) .
-             ((lambda (tag)
-                (svg-tag-make tag :beg 1 :end -1 :margin 0))))
-            (,(format "\\(<%s \\)%s>" date-re day-time-re) .
-             ((lambda (tag)
-                (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
-            (,(format "<%s \\(%s>\\)" date-re day-time-re) .
-             ((lambda (tag)
-                (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
+              ;; Citation of the form [cite:@Knuth:1984]
+              ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
+                                                (svg-tag-make tag
+                                                              :inverse t
+                                                              :beg 7 :end -1
+                                                              :crop-right t))))
+              ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
+                                                      (svg-tag-make tag
+                                                                    :end -1
+                                                                    :crop-left t))))
 
-            ;; Inactive date  (with or without day name, with or without time)
-             (,(format "\\(\\[%s\\]\\)" date-re) .
-              ((lambda (tag)
-                 (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
-             (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
-              ((lambda (tag)
-                 (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
-             (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
-              ((lambda (tag)
-                 (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))
 
-            ;; ;; Progress
-            ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
-                                                (svg-progress-percent (substring tag 1 -2)))))
-            ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
-                                              (svg-progress-count (substring tag 1 -1)))))
-            ))
+              ;; Active date (with or without day name, with or without time)
+              (,(format "\\(<%s>\\)" date-re) .
+               ((lambda (tag)
+                  (svg-tag-make tag :beg 1 :end -1 :margin 0))))
+              (,(format "\\(<%s \\)%s>" date-re day-time-re) .
+               ((lambda (tag)
+                  (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
+              (,(format "<%s \\(%s>\\)" date-re day-time-re) .
+               ((lambda (tag)
+                  (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
 
-  (add-hook 'org-mode-hook
-      (lambda ()
-        (org-next-visible-heading 1)
-        (svg-tag-mode 1)))
+              ;; Inactive date  (with or without day name, with or without time)
+               (,(format "\\(\\[%s\\]\\)" date-re) .
+                ((lambda (tag)
+                   (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
+               (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
+                ((lambda (tag)
+                   (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
+               (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
+                ((lambda (tag)
+                   (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))
+
+              ;; ;; Progress
+              ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
+                                                  (svg-progress-percent (substring tag 1 -2)))))
+              ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
+                                                (svg-progress-count (substring tag 1 -1)))))
+              ))
+
+    (add-hook 'org-mode-hook
+        (lambda ()
+          (org-next-visible-heading 1)
+          (svg-tag-mode 1)
+          ))
 #+end_src
 
 * Mode line
@@ -1291,7 +1380,6 @@ Disabled by default
 A beautiful mode-line consists of many unicode icons and dampened colors
 
 #+begin_src elisp :tangle ~/.emacs
-  (doom-modeline-mode 1)
   (add-hook 'after-init-hook #'doom-modeline-mode)
   (setq mood-line-glyph-alist mood-line-glyphs-fira-code)
 #+end_src
@@ -1427,8 +1515,9 @@ If you want to keep a simple day-journal, this will make that happen
 ** Quick search with Avy
 
 #+begin_src elisp :tangle ~/.emacs
-(use-package avy :ensure (:wait t)
- :init (setq avy-timeout-seconds 0.3))
+  (use-package avy
+    :ensure (:wait t)
+    :init (setq avy-timeout-seconds 0.3))
 #+end_src
 
 ** No woman no poll
@@ -1439,6 +1528,8 @@ This sometimes break updates in buffers after they receive input from the outsid
 (setq auto-revert-avoid-polling t
       global-auto-revert-ignore-modes '(compilation-mode)
       global-auto-revert-non-file-buffers t)
+
+(global-auto-revert-mode 1)
 #+end_src
 
 ** Window splitting
@@ -1446,7 +1537,7 @@ This sometimes break updates in buffers after they receive input from the outsid
 Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't use the delete-windows command
 
 #+begin_src elisp :tangle ~/.emacs
-(defun qrt/split-window-to-other-buffer-below
+  (defun qrt/split-window-to-other-buffer-below
       ()
     (interactive)
     (delete-other-windows)
@@ -1460,7 +1551,7 @@ Qrt found a clever way to make window-splitting more intuitive. Note, he doesn't
   (defun qrt/split-window-to-other-buffer-right
       ()
     (interactive)
-        (delete-other-windows)
+    (delete-other-windows)
     (split-window-right)
     (other-window 1)
     (let ((switch-to-prev-buffer-skip 'visible))
@@ -1522,9 +1613,4 @@ These faces in the mode-line are changed by themes, putting this last overwrites
 
   (set-face-attribute 'mode-line nil :box nil)
   (set-face-attribute 'mode-line-inactive nil :box nil)
-
-(global-set-key (kbd "C-h") (lambda () (interactive)
-                               (insert "(")))
-(global-set-key (kbd "C-j") (lambda () (interactive)
-                               (insert ")")))
 #+end_src
