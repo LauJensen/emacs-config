@@ -827,6 +827,20 @@ better format text blocks
                                                                  :underline nil))))))
 
   (setq org-hide-emphasis-markers t)
+
+  (with-eval-after-load 'org
+    ;; Make sure the whole heading line is colorized (not just the text)
+    (setq org-fontify-whole-heading-line t)
+
+    (dolist (spec '((org-level-1 . "#ff6c6b")  ; 1 star
+                    (org-level-2 . "#98be65")  ; 2 stars
+                    (org-level-3 . "#51afef")  ; 3 stars
+                    (org-level-4 . "#c678dd")  ; 4 stars
+                    (org-level-5 . "#da8548")  ; etc…
+                    (org-level-6 . "#46d9ff")
+                    (org-level-7 . "#4db5bd")
+                    (org-level-8 . "#bbbbbb")))
+      (set-face-attribute (car spec) nil :foreground (cdr spec))))
   #+end_src
 
   This is a cheap alternative to org-bullets, which simply replaces - and * with •
