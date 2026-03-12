@@ -1,0 +1,51 @@
+# Bash configuration
+
+Bash needs the following to run smooth:
+
+#+begin_src
+  pacman -S fzf direnv starship eza bat ripgrep
+#+end_src
+
+- fzf:      Fast history search
+- direnv:   Globals that work well with everything, incl Emacs
+- starship: Better prompt
+- eza:      Nicer ls
+- bat:      Better cat
+- ripgrep:  Faster grep
+
+Put the following in ~/.bashrc
+
+#+begin_src shell
+
+  [[ $- != *i* ]] && return
+
+  # --- FZF integration ---
+  if [ -f /usr/share/fzf/key-bindings.bash ]; then
+    source /usr/share/fzf/key-bindings.bash
+  fi
+
+  if [ -f /usr/share/fzf/completion.bash ]; then
+    source /usr/share/fzf/completion.bash
+  fi
+
+  eval "$(direnv hook bash)"
+  eval "$(starship init bash)"
+
+  alias ls="eza --icons"
+  alias ll="eza -lah --git"
+  alias tree="eza --tree"
+
+  alias grep='grep --color=auto'
+  alias l='eza -lah --icons $1'
+
+  alias cat="bat"
+
+  function cd() {
+      builtin cd "$@" && eza
+  }
+
+  alias ..="cd .."
+  alias ...="cd ../.."
+  alias cls="clear"
+
+#+end_src
