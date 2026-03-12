@@ -393,54 +393,61 @@ nodes. Discover or create with ~C-c n f~
 
 #+begin_src elisp :tangle ~/.emacs
   (use-package spinner :ensure t)
+
+  (use-package envrc
+    :ensure t
+    :config
+    (envrc-global-mode))
+
+
   (use-package yascroll
     :ensure t
     :init
     (scroll-bar-mode 0)
     (global-yascroll-bar-mode 1))
 
-    (use-package unicode-fonts
-      :ensure t
-      :config
-      (unicode-fonts-setup)
-      ;; After unicode-fonts has done its thing, force Nerd Font for PUA ranges.
-      (when (member "Symbols Nerd Font Mono" (font-family-list))
-        (let ((nerd (font-spec :family "Symbols Nerd Font Mono")))
-          ;; Main Private Use Area
-          (set-fontset-font t '(#xE000 . #xF8FF) nerd nil 'prepend)
-          ;; Supplementary PUAs (some Nerd glyphs live here too)
-          (set-fontset-font t '(#xF0000 . #xFFFFD) nerd nil 'prepend)
-          (set-fontset-font t '(#x100000 . #x10FFFD) nerd nil 'prepend))))
+  (use-package unicode-fonts
+    :ensure t
+    :config
+    (unicode-fonts-setup)
+    ;; After unicode-fonts has done its thing, force Nerd Font for PUA ranges.
+    (when (member "Symbols Nerd Font Mono" (font-family-list))
+      (let ((nerd (font-spec :family "Symbols Nerd Font Mono")))
+        ;; Main Private Use Area
+        (set-fontset-font t '(#xE000 . #xF8FF) nerd nil 'prepend)
+        ;; Supplementary PUAs (some Nerd glyphs live here too)
+        (set-fontset-font t '(#xF0000 . #xFFFFD) nerd nil 'prepend)
+        (set-fontset-font t '(#x100000 . #x10FFFD) nerd nil 'prepend))))
 
-    (use-package nerd-icons          :ensure t)
-    (use-package all-the-icons       :ensure t)
-    (use-package doom-modeline
-      :ensure t
-      :init
-;;      (set-face-foreground 'doom-modeline-buffer-file "#a83800")
-      (add-hook 'after-init-hook #'doom-modeline-mode))
-    ;;(use-package k8s-mode            :ensure t)
-    (use-package ejc-sql             :ensure t)
-    (use-package mood-line           :ensure t)
-    (use-package yascroll            :ensure t)
-    ;;  (use-package auto-complete       :ensure t)
-    (use-package transient           :ensure t)
-    (use-package magit               :ensure t :after transient)
-    (use-package flycheck            :ensure t)
-    (use-package flycheck-clj-kondo  :ensure t)
-    ;;(use-package d2-mode             :ensure t)
-    ;;(use-package chatgpt-shell       :ensure t)
-    (use-package ranger              :ensure t)
-    ;;(use-package pdf-tools           :ensure t)
-    ;;(use-package svg-lib             :ensure t)
-    ;;  (use-package forge               :ensure t :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
+  (use-package nerd-icons          :ensure t)
+  (use-package glsl-mode           :ensure t)
+  (use-package all-the-icons       :ensure t)
+  (use-package doom-modeline
+    :ensure t
+    :init
+    ;;      (set-face-foreground 'doom-modeline-buffer-file "#a83800")
+    (add-hook 'after-init-hook #'doom-modeline-mode))
+  ;;(use-package k8s-mode            :ensure t)
+  (use-package ejc-sql             :ensure t)
+  (use-package mood-line           :ensure t)
+  ;;  (use-package auto-complete       :ensure t)
+  (use-package transient           :ensure t)
+  (use-package magit               :ensure t :after transient)
+  (use-package flycheck            :ensure t)
+  (use-package flycheck-clj-kondo  :ensure t)
+  ;;(use-package d2-mode             :ensure t)
+  ;;(use-package chatgpt-shell       :ensure t)
+  (use-package ranger              :ensure t)
+  ;;(use-package pdf-tools           :ensure t)
+  ;;(use-package svg-lib             :ensure t)
+  ;;  (use-package forge               :ensure t :after magit) currently an incompatability, magit it 4.20, forge requires 4.2.1
 
-    ;; With configs
+  ;; With configs
 
-    (use-package markdown-mode
-      :ensure t
-      :mode ("README\\.md\\'" . gfm-mode)
-      :init (setq markdown-command "multimarkdown"))
+  (use-package markdown-mode
+    :ensure t
+    :mode ("README\\.md\\'" . gfm-mode)
+    :init (setq markdown-command "multimarkdown"))
 
   ;;  (use-package jinx
   ;;    :ensure t
@@ -448,121 +455,117 @@ nodes. Discover or create with ~C-c n f~
   ;;    :bind (("M-$" . jinx-correct)
   ;;           ("C-M-$" . jinx-languages)))
 
-    (use-package clojure-mode
-      :ensure t
-      :mode (("\\.clj\\'" . clojure-mode)
-             ("\\.cljd\\'" . clojure-mode)
-             ("\\.cljc\\'" . clojure-mode)
-             ("\\.edn\\'" . clojure-mode))
-      :init
-      (add-hook 'clojure-mode-hook #'subword-mode)
-      (add-hook 'clojure-mode-hook #'eldoc-mode)
-      (add-hook 'clojure-mode-hook #'flycheck-mode))
+  (use-package clojure-mode
+    :ensure t
+    :mode (("\\.clj\\'" . clojure-mode)
+           ("\\.cljd\\'" . clojure-mode)
+           ("\\.cljc\\'" . clojure-mode)
+           ("\\.edn\\'" . clojure-mode))
+    :init
+    (add-hook 'clojure-mode-hook #'subword-mode)
+    (add-hook 'clojure-mode-hook #'eldoc-mode)
+    (add-hook 'clojure-mode-hook #'flycheck-mode))
 
-    (use-package cider
-      :ensure t
-      :after clojure-mode
-      :defer t
-      :diminish subword-mode
-      :config
-      (setq nrepl-log-messages t
-            cider-repl-display-in-current-window t
-            cider-repl-use-clojure-font-lock t
-            cider-prompt-save-file-on-load 'always-save
-            cider-font-lock-dynamically '(macro core function var)
-            nrepl-hide-special-buffers t
-            cider-overlays-use-font-lock t)
-      (cider-repl-toggle-pretty-printing))
+  (use-package cider
+    :ensure t
+    :after clojure-mode
+    :defer t
+    :diminish subword-mode
+    :config
+    (setq nrepl-log-messages t
+          cider-repl-display-in-current-window t
+          cider-repl-use-clojure-font-lock t
+          cider-prompt-save-file-on-load 'always-save
+          cider-font-lock-dynamically '(macro core function var)
+          nrepl-hide-special-buffers t
+          cider-overlays-use-font-lock t)
+    (cider-repl-toggle-pretty-printing))
 
-    (use-package lsp-mode
-      :ensure t
-      :init
-      (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
-            gc-cons-threshold (* 100 1024 1024)
-            lsp-headerline-arrow "=>"
-            read-process-output-max (* 1024 1024)
-            treemacs-space-between-root-nodes nil
-            company-minimum-prefix-length 1
-            lsp-idle-delay 0.800
-            lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
-                                            ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
-            cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
-            )
-      :config
-      (define-key lsp-mode-map (kbd "C-c C-u") lsp-command-map)
-      :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-             (clojure-mode . lsp)
-             ;; if you want which-key integration
-             ;;(lsp-mode . lsp-enable-which-key-integration)
-             )
-      :commands lsp)
+  (use-package lsp-mode
+    :ensure t
+    :init
+    (setq lsp-keymap-prefix "C-c C-u" ;; aids which-key
+          gc-cons-threshold (* 100 1024 1024)
+          lsp-headerline-arrow "=>"
+          read-process-output-max (* 1024 1024)
+          treemacs-space-between-root-nodes nil
+          company-minimum-prefix-length 1
+          lsp-idle-delay 0.800
+          lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
+                                          ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
+          cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
+          )
+    :config
+    (define-key lsp-mode-map (kbd "C-c C-u") lsp-command-map)
+    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+           (clojure-mode . lsp)
+           ;; if you want which-key integration
+           ;;(lsp-mode . lsp-enable-which-key-integration)
+           )
+    :commands lsp)
 
-    ;; optionally
-    (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
-    (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
+  ;; optionally
+  (use-package lsp-ui       :ensure t :commands lsp-ui-mode)
+  (use-package lsp-treemacs :ensure t :commands lsp-treemacs-errors-list)
 
-    (use-package org-autolist
-      :ensure t
-      :after org
-      :hook (org-mode . org-autolist-mode))
+  (use-package org-autolist
+    :ensure t
+    :after org
+    :hook (org-mode . org-autolist-mode))
 
-    (use-package org-roam
-      :ensure t
-      :init
-      (setq org-roam-v2-ack t)
-      (setq org-return-follows-link  t)
-      (setq org-roam-node-display-template
-            (concat "${title:*} "
-                    (propertize "${tags:10}" 'face 'org-tag)))
-      :custom
-      (org-roam-directory my-roam-folder)
-      (org-roam-completion-everywhere t)
-
-
-      :bind (("C-c n l" . org-roam-buffer-toggle)
-             ("C-c n f" . org-roam-node-find)
-             ("C-c n i" . org-roam-node-insert)
-             :map org-mode-map
-             ("M-RET"   . org-meta-return)
-             ("C-M-i"   . completion-at-point))
-      :config
-      (org-roam-setup))
-
-    (use-package org-fragtog
-      :ensure t
-      :after org
-      :hook (org-mode . org-fragtog-mode))
-
-    (use-package org-bullets
-      :ensure t
-      :after org
-      :hook (org-mode . org-bullets-mode))
-
-    (use-package doom-themes
-      :ensure t
-      :config
-      ;; Global settings (defaults)
-      (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-            doom-themes-enable-italic t) ; if nil, italics is universally disabled
-      (load-theme 'doom-one t)
+  (use-package org-roam
+    :ensure t
+    :init
+    (setq org-roam-v2-ack t)
+    (setq org-return-follows-link  t)
+    (setq org-roam-node-display-template
+          (concat "${title:*} "
+                  (propertize "${tags:10}" 'face 'org-tag)))
+    :custom
+    (org-roam-directory my-roam-folder)
+    (org-roam-completion-everywhere t)
 
 
+    :bind (("C-c n l" . org-roam-buffer-toggle)
+           ("C-c n f" . org-roam-node-find)
+           ("C-c n i" . org-roam-node-insert)
+           :map org-mode-map
+           ("M-RET"   . org-meta-return)
+           ("C-M-i"   . completion-at-point))
+    :config
+    (org-roam-setup))
 
-      ;; Enable flashing mode-line on errors
-      (doom-themes-visual-bell-config)
-      ;; or for treemacs users
-      (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
-      (doom-themes-treemacs-config)
-      ;; Corrects (and improves) org-mode's native fontification.
-      (doom-themes-org-config))
+  (use-package org-fragtog
+    :ensure t
+    :after org
+    :hook (org-mode . org-fragtog-mode))
 
+  (use-package org-bullets
+    :ensure t
+    :after org
+    :hook (org-mode . org-bullets-mode))
 
-    ;; These are loaded by elpaca now
-    ;;  (require 'unicode-fonts)
-    ;;  (require 'nerd-icons)
-    ;;  (require 'doom-modeline)
-    ;;  (require 'package)
-    ;;  (require 'k8s-mode)
+  (use-package doom-themes
+    :ensure t
+    :config
+    ;; Global settings (defaults)
+    (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+          doom-themes-enable-italic t) ; if nil, italics is universally disabled
+    (load-theme 'doom-horizon t)
+    ;; Enable flashing mode-line on errors
+    (doom-themes-visual-bell-config)
+    ;; or for treemacs users
+    (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
+    (doom-themes-treemacs-config)
+    ;; Corrects (and improves) org-mode's native fontification.
+    (doom-themes-org-config))
+
+  ;; These are loaded by elpaca now
+  ;;  (require 'unicode-fonts)
+  ;;  (require 'nerd-icons)
+  ;;  (require 'doom-modeline)
+  ;;  (require 'package)
+  ;;  (require 'k8s-mode)
 #+end_src
 
 For completion we use company mode in the back and Corfu in the front
@@ -1292,8 +1295,9 @@ We load the theme timu-rouge, which is superb. But we can make it even
 better by mixing with deeper-blue (disabled)
 
 #+begin_src elisp
- (load-theme 'deeper-blue)
+  (load-theme 'deeper-blue)
   (load-theme 'doom-one t)
+  (load-theme 'doom-horizon t)
 #+end_src
 
 Emacs own scrollbars are bulky, this replaces them with ya-scrollbar
