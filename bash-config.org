@@ -36,16 +36,112 @@ Put the following in ~/.bashrc
   alias tree="eza --tree"
 
   alias grep='grep --color=auto'
-  alias l='eza -lah --icons $1'
+  alias l='eza -lah --group-directories-first --icons $1'
 
   alias cat="bat"
 
   function cd() {
-      builtin cd "$@" && eza
+      builtin cd "$@" && eza -lah  --group-directories-first --icons
   }
 
   alias ..="cd .."
   alias ...="cd ../.."
   alias cls="clear"
 
+#+end_src
+
+For Starship, use
+
+#+begin_src toml
+  add_newline = false
+
+  format = """
+  $directory\
+  $git_branch\
+  $git_status\
+  $fill\
+  $cmd_duration\
+  $line_break\
+  $character"""
+
+  [fill]
+  symbol = " "
+
+  [directory]
+  style = "bold blue"
+  truncate_to_repo = true
+  truncation_length = 3
+  read_only = " ro"
+
+  [git_branch]
+  symbol = " "
+  style = "bold purple"
+
+  [git_status]
+  style = "red"
+  format = '[$all_status$ahead_behind]($style) '
+
+  [cmd_duration]
+  min_time = 500
+  format = '[$duration]($style) '
+  style = "yellow"
+
+  [character]
+  success_symbol = "[❯](bold green)"
+  error_symbol = "[❯](bold red)"
+  vimcmd_symbol = "[❮](bold green)"
+
+  [java]
+  format = '[☕ $version](red) '
+  detect_extensions = ["clj", "cljs", "cljc", "java", "edn"]
+  detect_files = ["deps.edn", "project.clj", "build.clj"]
+  detect_folders = []
+
+  [nodejs]
+  disabled = true
+
+  [python]
+  disabled = true
+
+  [golang]
+  disabled = true
+
+  [rust]
+  disabled = true
+
+  [php]
+  disabled = true
+
+  [ruby]
+  disabled = true
+
+  [package]
+  disabled = true
+
+  [aws]
+  disabled = true
+
+  [gcloud]
+  disabled = true
+
+  [docker_context]
+  disabled = true
+
+  [kubernetes]
+  disabled = true
+
+  [hostname]
+  disabled = true
+
+  [username]
+  disabled = true
+
+  [memory_usage]
+  disabled = true
+
+  [battery]
+  disabled = true
+
+  [time]
+  disabled = true
 #+end_src
