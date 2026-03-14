@@ -492,7 +492,7 @@ nodes. Discover or create with ~C-c n f~
           company-minimum-prefix-length 1
           lsp-idle-delay 0.800
           lsp-enable-indentation nil ; uncomment to use cider indentation instead of lsp
-                                          ; lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
+          lsp-enable-completion-at-point nil ; uncomment to use cider completion instead of lsp
           cider-eldoc-display-for-symbol-at-point t ; disable cider showing eldoc during symbol at point
           )
     :config
@@ -588,7 +588,7 @@ After have tried many fonts, Iosevka seems to be optimal for readability.
 It's available on Arch via ~yay ttf-iosevka~ and OSX via Brew.
 
 #+begin_src elisp :tangle ~/.emacs
-(set-frame-font "iosevka 13")
+(set-frame-font "iosevka 14")
 (set-face-attribute 'default nil :weight 'light)
 #+end_src
 
